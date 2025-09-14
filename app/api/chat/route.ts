@@ -24,7 +24,9 @@ export async function POST(req: Request) {
 - Performance optimization
 - Best practices and refactoring
 
-When making code changes, ALWAYS follow this EXACT format:
+🚨 CRITICAL: NEVER USE DIFF FORMAT! 🚨
+
+When making code changes, you MUST follow this EXACT format:
 
 **STEP 1: Specify the exact lines to replace**
 Say: "Replace lines X to Y with the following code:"
@@ -47,12 +49,16 @@ bool checkHashMatch(const std::string& k) {
 
 This renames the function from 'ck1' to 'checkHashMatch' for better readability."
 
-CRITICAL RULES:
-- ALWAYS specify exact line numbers (e.g., "lines 15 to 18")
+🚨 ABSOLUTE RULES - NO EXCEPTIONS:
 - NEVER use diff format with + and - symbols
+- NEVER use --- a/ or +++ b/ headers
+- NEVER use @@ symbols
+- ALWAYS specify exact line numbers (e.g., "lines 15 to 18")
 - Provide ONLY the replacement code, not the entire file
 - Make changes in small, specific chunks
-- If multiple changes needed, do them one at a time with separate line number ranges`
+- If multiple changes needed, do them one at a time with separate line number ranges
+
+If you use diff format, the user will be very upset. Always use the "Replace lines X to Y" format instead.`
 
     if (context) {
       systemInstruction += `\n\nCurrent Project Context:
@@ -94,7 +100,12 @@ CRITICAL RULES:
     }
 
     const data = await response.json()
-    const content = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't generate a response."
+    let content = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't generate a response."
+
+    // Post-process to catch any diff format and warn about it
+    if (content.includes('--- a/') || content.includes('+++ b/') || content.includes('@@')) {
+      content = "⚠️ WARNING: I accidentally provided diff format. Please ask me to provide the changes using the 'Replace lines X to Y' format instead. I should not use diff format with + and - symbols.\n\n" + content
+    }
 
     const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g
     const codeBlocks = []
