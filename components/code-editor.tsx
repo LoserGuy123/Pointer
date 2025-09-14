@@ -18,7 +18,7 @@ const detectLanguageFromContent = (content: string): string | null => {
   const patterns = [
     { pattern: /function\s+\w+\s*\(|local\s+\w+\s*=|end\s*$/, language: "Lua" },
     { pattern: /using\s+System|namespace\s+\w+|public\s+class/, language: "C#" },
-    { pattern: /#!/bin/(bash|sh|zsh|fish)|echo\s+["']/, language: "Shell Script" },
+    { pattern: /#!\/bin\/(bash|sh|zsh|fish)|echo\s+["']/, language: "Shell Script" },
     { pattern: /def\s+\w+\s*\(|import\s+\w+|print\s*\(/, language: "Python" },
     { pattern: /function\s+\w+\s*\(|const\s+\w+\s*=|let\s+\w+\s*=/, language: "JavaScript" },
     { pattern: /interface\s+\w+|type\s+\w+\s*=|:\s*\w+\[\]/, language: "TypeScript" },
