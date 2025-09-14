@@ -473,23 +473,6 @@ Welcome to your new markdown file!
     }
   }
 
-  const getDefaultFileContent = (fileName: string): string => {
-    const extension = fileName.split(".").pop()?.toLowerCase()
-
-    const templates: Record<string, string> = {
-      js: `// ${fileName}\nconsole.log("Hello from ${fileName}");\n`,
-      jsx: `import React from 'react';\n\nfunction ${fileName.replace(".jsx", "").replace(/[^a-zA-Z0-9]/g, "")}() {\n  return (\n    <div>\n      <h1>Hello from ${fileName}</h1>\n    </div>\n  );\n}\n\nexport default ${fileName.replace(".jsx", "").replace(/[^a-zA-Z0-9]/g, "")};\n`,
-      ts: `// ${fileName}\nconsole.log("Hello from ${fileName}");\n`,
-      tsx: `import React from 'react';\n\ninterface Props {}\n\nfunction ${fileName.replace(".tsx", "").replace(/[^a-zA-Z0-9]/g, "")}({}: Props) {\n  return (\n    <div>\n      <h1>Hello from ${fileName}</h1>\n    </div>\n  );\n}\n\nexport default ${fileName.replace(".tsx", "").replace(/[^a-zA-Z0-9]/g, "")};\n`,
-      py: `# ${fileName}\nprint("Hello from ${fileName}")\n`,
-      css: `/* ${fileName} */\nbody {\n  font-family: Arial, sans-serif;\n  margin: 0;\n  padding: 20px;\n}\n`,
-      html: `<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>${fileName.replace(".html", "")}</title>\n</head>\n<body>\n  <h1>Hello from ${fileName}</h1>\n</body>\n</html>\n`,
-      md: `# ${fileName.replace(".md", "")}\n\nWelcome to your new markdown file!\n`,
-      json: `{\n  "name": "${fileName.replace(".json", "")}",\n  "version": "1.0.0"\n}\n`,
-    }
-
-    return templates[extension || ""] || `// ${fileName}\n// Start coding here!\n`
-  }
 
   const handleCreateFile = (path: string = "") => {
     setCreatingInPath(path)
@@ -509,7 +492,7 @@ Welcome to your new markdown file!
     if (!newFileName.trim()) return
     
     const fullPath = creatingInPath ? `${creatingInPath}/${newFileName}` : newFileName
-    const defaultContent = getDefaultFileContent(newFileName)
+    const defaultContent = `// ${newFileName}\n// Start coding here!\n`
     
     // Add to file contents
     onFileContentChange(fullPath, defaultContent)
