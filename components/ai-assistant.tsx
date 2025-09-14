@@ -268,7 +268,34 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
 
   const applyCodeToFile = (code: string) => {
     if (currentFile) {
-      onFileContentChange(currentFile, code)
+      // Check if the code is in diff format
+      if (code.includes('--- a/') && code.includes('+++ b/') && code.includes('@@')) {
+        // This is a diff format - show user options
+        const choice = confirm(
+          "This appears to be a diff/patch format. Would you like to:\n\n" +
+          "• OK: Replace entire file with the diff content\n" +
+          "• Cancel: Keep current file unchanged\n\n" +
+          "Note: For proper diff application, you may need to manually apply the changes."
+        )
+        
+        if (choice) {
+          // Extract just the new lines (lines starting with +)
+          const diffLines = code.split('\n')
+          const newLines = diffLines
+            .filter(line => line.startsWith('+') && !line.startsWith('+++'))
+            .map(line => line.substring(1))
+          
+          if (newLines.length > 0) {
+            onFileContentChange(currentFile, newLines.join('\n'))
+          } else {
+            // If no + lines found, just apply the raw diff
+            onFileContentChange(currentFile, code)
+          }
+        }
+      } else {
+        // This is regular code, apply it directly
+        onFileContentChange(currentFile, code)
+      }
     }
   }
 
@@ -404,17 +431,37 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
                     <div key={index} className="flex items-center gap-2 p-2 bg-muted/20 rounded text-xs">
                       <FileText className="h-3 w-3 text-muted-foreground" />
                       <span className="flex-1 text-muted-foreground">
-                        Apply {block.language} code to {currentFile}
+                        {block.code.includes('--- a/') && block.code.includes('+++ b/') 
+                          ? `Apply diff to ${currentFile}` 
+                          : `Apply ${block.language} code to ${currentFile}`}
                       </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-blue-600 hover:text-blue-700"
+                        onClick={() => {
+                          // Show the code in a modal or alert for review
+                          const isDiff = block.code.includes('--- a/') && block.code.includes('+++ b/')
+                          if (isDiff) {
+                            alert(`Diff Preview:\n\n${block.code.substring(0, 1000)}${block.code.length > 1000 ? '\n\n... (truncated)' : ''}`)
+                          } else {
+                            alert(`Code Preview:\n\n${block.code.substring(0, 1000)}${block.code.length > 1000 ? '\n\n... (truncated)' : ''}`)
+                          }
+                        }}
+                        title="Preview code before applying"
+                      >
+                        👁️
+                      </Button>
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-6 px-2 text-green-600 hover:text-green-700"
                         onClick={() => applyCodeToFile(block.code)}
+                        title="Apply code to file"
                       >
                         <Check className="h-3 w-3" />
                       </Button>
-                      <Button variant="ghost" size="sm" className="h-6 px-2 text-red-600 hover:text-red-700">
+                      <Button variant="ghost" size="sm" className="h-6 px-2 text-red-600 hover:text-red-700" title="Dismiss">
                         <X className="h-3 w-3" />
                       </Button>
                     </div>

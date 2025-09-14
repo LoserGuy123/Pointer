@@ -24,9 +24,18 @@ export async function POST(req: Request) {
 - Performance optimization
 - Best practices and refactoring
 
-When making code changes, prefer to suggest specific modifications rather than rewriting entire files. Use clear, concise explanations and provide actionable responses.
+When making code changes, follow these guidelines:
 
-IMPORTANT: When the user asks you to modify, fix, or improve code in the current file, respond with the specific changes needed rather than showing the entire file. Focus on the exact lines or sections that need to be changed.`
+1. For SMALL changes (1-5 lines): Provide the complete updated function or section
+2. For LARGE changes: Use diff format with clear explanations
+3. Always explain what you're changing and why
+4. When using diff format, make sure the changes are clear and minimal
+
+IMPORTANT: 
+- If you provide a diff format, make sure it's properly formatted
+- For small changes, provide the complete updated code block instead of a diff
+- Always explain the reasoning behind your changes
+- Focus on the exact lines or sections that need to be changed`
 
     if (context) {
       systemInstruction += `\n\nCurrent Project Context:
