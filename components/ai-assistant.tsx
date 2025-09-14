@@ -562,7 +562,10 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
                         li: ({ children }) => <li className="mb-1">{children}</li>,
                       }}
                     >
-                      {message.content}
+                      {message.codeBlocks && message.codeBlocks.length > 0 
+                        ? message.content.replace(/```[\s\S]*?```/g, '') // Hide code blocks from display
+                        : message.content
+                      }
                     </ReactMarkdown>
                   )
                 ) : (
