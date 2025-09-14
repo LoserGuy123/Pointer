@@ -95,7 +95,8 @@ If you use diff format, the user will be very upset. Always provide complete fun
     }
 
     const data = await response.json()
-    let content = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't generate a response."
+    let originalContent = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't generate a response."
+    let content = originalContent
 
     // Post-process to catch any diff format and warn about it
     if (content.includes('--- a/') || content.includes('+++ b/') || content.includes('@@')) {
@@ -122,6 +123,7 @@ If you use diff format, the user will be very upset. Always provide complete fun
     return new Response(
       JSON.stringify({
         content,
+        originalContent,
         codeBlocks: codeBlocks.length > 0 ? codeBlocks : null,
       }),
       {

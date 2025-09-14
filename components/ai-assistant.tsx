@@ -227,7 +227,9 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
       
       // Auto-apply changes if they're line replacements (silently)
       if (data.codeBlocks && data.codeBlocks.length > 0) {
-        autoApplyChanges(data.content, data.codeBlocks)
+        // Use the original content before it gets cleaned up
+        const originalContent = data.originalContent || data.content
+        autoApplyChanges(originalContent, data.codeBlocks)
       }
     } catch (error) {
       console.error("Chat error:", error)
@@ -309,8 +311,13 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
       const currentContent = fileContents[currentFile] || ""
       const lines = currentContent.split('\n')
       
+      console.log(`🔧 Applying replacement to lines ${startLine}-${endLine}`)
+      console.log(`📄 File has ${lines.length} lines`)
+      console.log(`📝 New code length: ${newCode.split('\n').length} lines`)
+      
       // Validate line numbers
       if (startLine < 1 || endLine > lines.length || startLine > endLine) {
+        console.log(`❌ Invalid line numbers: ${startLine} to ${endLine}. File has ${lines.length} lines.`)
         alert(`Invalid line numbers: ${startLine} to ${endLine}. File has ${lines.length} lines.`)
         return
       }
@@ -322,13 +329,20 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
         ...lines.slice(endLine)           // Lines after the replacement
       ]
       
+      console.log(`✅ Replacing ${endLine - startLine + 1} lines with ${newCode.split('\n').length} lines`)
       onFileContentChange(currentFile, newLines.join('\n'))
     }
   }
 
   // Auto-apply changes when AI provides line replacements
   const autoApplyChanges = (messageContent: string, codeBlocks: Array<{ language: string; code: string }>) => {
-    if (!currentFile || !codeBlocks.length) return
+    if (!currentFile || !codeBlocks.length) {
+      console.log('❌ No current file or code blocks')
+      return
+    }
+
+    console.log('🔍 Looking for line replacement instructions in:', messageContent.substring(0, 200) + '...')
+    console.log('📝 Code blocks available:', codeBlocks.length)
 
     // Look for line replacement instructions
     const lineMatch = messageContent.match(/Replace lines (\d+) to (\d+) with the following code:/i)
@@ -337,8 +351,8 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
       const endLine = parseInt(lineMatch[2])
       const newCode = codeBlocks[0].code
 
-      // Show a brief notification
-      console.log(`🤖 Auto-applying changes to lines ${startLine}-${endLine} in ${currentFile}`)
+      console.log(`🤖 Found line replacement: lines ${startLine}-${endLine}`)
+      console.log(`📄 New code:`, newCode.substring(0, 100) + '...')
 
       // Auto-apply the change
       setTimeout(() => {
@@ -349,6 +363,9 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
           verifyAndFixChanges(startLine, endLine, newCode, messageContent)
         }, 500)
       }, 1000) // Small delay to let the message render
+    } else {
+      console.log('❌ No line replacement pattern found')
+      console.log('🔍 Available patterns:', messageContent.match(/Replace lines \d+ to \d+/gi))
     }
   }
 
