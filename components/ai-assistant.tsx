@@ -21,7 +21,6 @@ import {
   Check,
   X,
   Trash2,
-  RotateCcw,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import ReactMarkdown from "react-markdown"
@@ -31,6 +30,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface Message {
   id: string
@@ -135,6 +144,9 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const [isUserScrolling, setIsUserScrolling] = useState(false)
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true)
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Load chat history from localStorage on component mount
@@ -158,7 +170,7 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
   }, [messages])
 
   const scrollToBottom = () => {
-    if (messagesEndRef.current) {
+    if (messagesEndRef.current && shouldAutoScroll && !isUserScrolling) {
       messagesEndRef.current.scrollIntoView({
         behavior: "smooth",
         block: "end",
@@ -167,9 +179,25 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
     }
   }
 
+  // Handle scroll events to detect user scrolling
+  const handleScroll = () => {
+    if (!messagesContainerRef.current) return
+    
+    const container = messagesContainerRef.current
+    const isAtBottom = container.scrollHeight - container.scrollTop === container.clientHeight
+    
+    if (isAtBottom) {
+      setIsUserScrolling(false)
+      setShouldAutoScroll(true)
+    } else {
+      setIsUserScrolling(true)
+      setShouldAutoScroll(false)
+    }
+  }
+
   useEffect(() => {
     scrollToBottom()
-  }, [messages])
+  }, [messages, shouldAutoScroll, isUserScrolling])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -475,28 +503,17 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
     }
   }
 
-  const revertToMessage = (messageIndex: number) => {
-    if (messageIndex < 0 || messageIndex >= messages.length) return
-    
-    const targetMessage = messages[messageIndex]
-    if (targetMessage.role !== 'assistant' || !targetMessage.codeBlocks?.length) {
-      alert('This message doesn\'t contain code to revert to')
-      return
-    }
-    
-    // Find the last code block from this message
-    const lastCodeBlock = targetMessage.codeBlocks[targetMessage.codeBlocks.length - 1]
-    if (lastCodeBlock && currentFile) {
-      onFileContentChange(currentFile, lastCodeBlock.code)
-      console.log(`🔄 Reverted to code from message ${messageIndex + 1}`)
-    }
-  }
+
+  const [showClearDialog, setShowClearDialog] = useState(false)
 
   const clearChatHistory = () => {
-    if (confirm('Are you sure you want to clear the chat history?')) {
-      setMessages([])
-      localStorage.removeItem('pointer-ide-chat-history')
-    }
+    setShowClearDialog(true)
+  }
+
+  const confirmClearChat = () => {
+    setMessages([])
+    localStorage.removeItem('pointer-ide-chat-history')
+    setShowClearDialog(false)
   }
 
   return (
@@ -562,7 +579,11 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto editor-scrollbar p-4 space-y-4">
+      <div 
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto editor-scrollbar p-4 space-y-4"
+        onScroll={handleScroll}
+      >
         {messages.map((message) => (
           <div key={message.id} className={cn("flex gap-3", message.role === "user" && "flex-row-reverse")}>
             <div
@@ -585,16 +606,6 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
                   message.role === "user" ? "bg-accent text-accent-foreground ml-auto" : "bg-card text-card-foreground",
                 )}
               >
-                {/* Revert button - only show on hover for assistant messages with code */}
-                {message.role === "assistant" && message.codeBlocks && message.codeBlocks.length > 0 && (
-                  <button
-                    onClick={() => revertToMessage(index)}
-                    className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-accent hover:bg-accent/80 text-accent-foreground rounded-full p-1.5 shadow-lg z-10"
-                    title="Revert to this code state"
-                  >
-                    <RotateCcw className="h-3 w-3" />
-                  </button>
-                )}
                 {message.role === "assistant" ? (
                   message.isTyping ? (
                     <TypingMessage content={message.content} onComplete={() => handleTypingComplete(message.id)} />
@@ -718,6 +729,24 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
         </form>
         <p className="text-xs text-muted-foreground mt-2">Press Enter to send, Shift+Enter for new line</p>
       </div>
+
+      {/* Clear Chat Confirmation Dialog */}
+      <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear Chat History</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to clear all chat history? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmClearChat}>
+              Clear History
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
