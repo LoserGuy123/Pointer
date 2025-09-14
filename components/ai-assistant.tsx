@@ -76,16 +76,16 @@ function TypingMessage({ content, onComplete }: { content: string; onComplete: (
       className="prose prose-sm dark:prose-invert max-w-none"
       components={{
         p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-        code: ({ children, className }) => {
-          const isInline = !className
-          return isInline ? (
-            <code className="bg-muted px-1 py-0.5 rounded text-xs font-mono">{children}</code>
-          ) : (
-            <pre className="bg-muted p-2 rounded text-xs font-mono overflow-x-auto">
-              <code>{children}</code>
-            </pre>
-          )
-        },
+                        code: ({ children, className }) => {
+                          const isInline = !className
+                          return isInline ? (
+                            <code className="bg-muted px-1 py-0.5 rounded text-xs font-mono">{children}</code>
+                          ) : (
+                            <pre className="bg-muted p-2 rounded text-xs font-mono overflow-hidden">
+                              <code>{children}</code>
+                            </pre>
+                          )
+                        },
         strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
         em: ({ children }) => <em className="italic">{children}</em>,
         ul: ({ children }) => <ul className="list-disc list-inside mb-2">{children}</ul>,
@@ -224,6 +224,11 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
       }
 
       setMessages((prev) => [...prev, assistantMessage])
+      
+      // Auto-apply changes if they're line replacements
+      if (data.codeBlocks && data.codeBlocks.length > 0) {
+        autoApplyChanges(data.content, data.codeBlocks)
+      }
     } catch (error) {
       console.error("Chat error:", error)
       const errorMessage: Message = {
@@ -318,6 +323,63 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
       ]
       
       onFileContentChange(currentFile, newLines.join('\n'))
+    }
+  }
+
+  // Auto-apply changes when AI provides line replacements
+  const autoApplyChanges = (messageContent: string, codeBlocks: Array<{ language: string; code: string }>) => {
+    if (!currentFile || !codeBlocks.length) return
+
+    // Look for line replacement instructions
+    const lineMatch = messageContent.match(/Replace lines (\d+) to (\d+) with the following code:/i)
+    if (lineMatch) {
+      const startLine = parseInt(lineMatch[1])
+      const endLine = parseInt(lineMatch[2])
+      const newCode = codeBlocks[0].code
+
+      // Show a brief notification
+      console.log(`🤖 Auto-applying changes to lines ${startLine}-${endLine} in ${currentFile}`)
+
+      // Auto-apply the change
+      setTimeout(() => {
+        applyLineReplacement(startLine, endLine, newCode)
+        
+        // Auto-verify the change was applied correctly
+        setTimeout(() => {
+          verifyAndFixChanges(startLine, endLine, newCode, messageContent)
+        }, 500)
+      }, 1000) // Small delay to let the message render
+    }
+  }
+
+  // Verify changes were applied correctly and fix if needed
+  const verifyAndFixChanges = (startLine: number, endLine: number, expectedCode: string, originalMessage: string) => {
+    if (!currentFile) return
+
+    const currentContent = fileContents[currentFile] || ""
+    const lines = currentContent.split('\n')
+    const appliedLines = lines.slice(startLine - 1, endLine).join('\n')
+    const expectedLines = expectedCode.trim()
+
+    // Check if the change was applied correctly
+    if (appliedLines.trim() !== expectedLines) {
+      console.log(`🔧 Change verification failed. Re-applying...`)
+      
+      // Re-apply the change
+      applyLineReplacement(startLine, endLine, expectedCode)
+      
+      // Add a verification message
+      setTimeout(() => {
+        const verificationMessage: Message = {
+          id: (Date.now() + 2).toString(),
+          role: "assistant",
+          content: `✅ Verified and corrected the changes to lines ${startLine}-${endLine}. The code has been properly applied.`,
+          createdAt: Date.now(),
+        }
+        setMessages((prev) => [...prev, verificationMessage])
+      }, 500)
+    } else {
+      console.log(`✅ Change verification passed for lines ${startLine}-${endLine}`)
     }
   }
 
@@ -427,7 +489,7 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
                           return isInline ? (
                             <code className="bg-muted px-1 py-0.5 rounded text-xs font-mono">{children}</code>
                           ) : (
-                            <pre className="bg-muted p-2 rounded text-xs font-mono overflow-x-auto">
+                            <pre className="bg-muted p-2 rounded text-xs font-mono overflow-hidden">
                               <code>{children}</code>
                             </pre>
                           )

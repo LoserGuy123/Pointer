@@ -214,4 +214,26 @@
     border-color: oklch(0.6 0.25 200 / 0.4);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   }
+
+  /* Clean code block styles */
+  .prose pre {
+    background: oklch(0.15 0.01 240 / 0.9) !important;
+    border: 1px solid oklch(0.25 0.01 240 / 0.4) !important;
+    border-radius: 8px !important;
+    padding: 12px !important;
+    overflow: hidden !important;
+    margin: 8px 0 !important;
+  }
+
+  .prose code {
+    background: oklch(0.15 0.01 240 / 0.6) !important;
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
+    font-size: 0.85em !important;
+  }
+
+  .prose pre code {
+    background: transparent !important;
+    padding: 0 !important;
+  }
 }

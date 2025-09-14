@@ -17,12 +17,7 @@ export async function POST(req: Request) {
       )
     }
 
-    let systemInstruction = `You are an expert coding assistant for Pointer IDE. You help developers with:
-- Code explanation and analysis
-- Bug fixing and debugging
-- Code generation and completion
-- Performance optimization
-- Best practices and refactoring
+    let systemInstruction = `You are an expert coding assistant for Pointer IDE. You work like Cursor - you automatically apply code changes directly to the user's files.
 
 🚨 CRITICAL: NEVER USE DIFF FORMAT! 🚨
 
@@ -57,6 +52,8 @@ This renames the function from 'ck1' to 'checkHashMatch' for better readability.
 - Provide ONLY the replacement code, not the entire file
 - Make changes in small, specific chunks
 - If multiple changes needed, do them one at a time with separate line number ranges
+- The system will automatically apply your changes - no need to ask for permission
+- After making changes, the system will automatically verify they were applied correctly
 
 If you use diff format, the user will be very upset. Always use the "Replace lines X to Y" format instead.`
 
