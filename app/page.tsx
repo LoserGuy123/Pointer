@@ -64,16 +64,13 @@ export default function PointerIDE() {
   }
 
   const handleNewFile = () => {
-    const fileName = prompt("Enter file name:")
-    if (!fileName) return
-
-    const defaultContent = getDefaultFileContent(fileName)
-    setFileContents((prev) => ({ ...prev, [fileName]: defaultContent }))
-    setCurrentFile(fileName)
+    // File creation is now handled inline in the file explorer
+    console.log("File creation handled by file explorer")
   }
 
   const handleNewFolder = () => {
-    alert("Use the folder icon in the file explorer to create new folders")
+    // Folder creation is now handled inline in the file explorer
+    console.log("Folder creation handled by file explorer")
   }
 
   const handleSave = () => {

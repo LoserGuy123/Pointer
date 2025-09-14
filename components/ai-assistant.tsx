@@ -159,7 +159,7 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
   }, [messages])
 
   const scrollToBottom = () => {
-    if (messagesEndRef.current && !isUserScrolling) {
+    if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({
         behavior: "smooth",
         block: "end",
@@ -176,13 +176,20 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
     let scrollTimeout: NodeJS.Timeout
 
     const handleScroll = () => {
-      setIsUserScrolling(true)
-      clearTimeout(scrollTimeout)
+      const { scrollTop, scrollHeight, clientHeight } = container
+      const isAtBottom = scrollHeight - scrollTop - clientHeight < 10
       
-      // Reset user scrolling flag after 2 seconds of no scrolling
-      scrollTimeout = setTimeout(() => {
+      if (!isAtBottom) {
+        setIsUserScrolling(true)
+        clearTimeout(scrollTimeout)
+        
+        // Reset user scrolling flag after 3 seconds of no scrolling
+        scrollTimeout = setTimeout(() => {
+          setIsUserScrolling(false)
+        }, 3000)
+      } else {
         setIsUserScrolling(false)
-      }, 2000)
+      }
     }
 
     container.addEventListener('scroll', handleScroll)
@@ -192,8 +199,11 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
     }
   }, [])
 
+  // Auto-scroll to bottom when new messages are added (only if user isn't scrolling)
   useEffect(() => {
-    scrollToBottom()
+    if (!isUserScrolling) {
+      scrollToBottom()
+    }
   }, [messages, isUserScrolling])
 
   // Keyboard shortcuts
@@ -222,8 +232,9 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
     e.preventDefault()
     if (!input.trim() || isLoading) return
     
-    // Clear user scrolling flag when sending new message
+    // Always scroll to bottom when user sends a message
     setIsUserScrolling(false)
+    setTimeout(() => scrollToBottom(), 100)
 
     const userMessage: Message = {
       id: Date.now().toString(),

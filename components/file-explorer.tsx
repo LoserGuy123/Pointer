@@ -55,6 +55,11 @@ export function FileExplorer({ currentFile, onFileSelect, fileContents, onFileCo
   const [fileTree, setFileTree] = useState<FileNode[]>(initialFileTree)
   const [searchQuery, setSearchQuery] = useState("")
   const [filteredTree, setFilteredTree] = useState<FileNode[]>(initialFileTree)
+  const [showNewFileInput, setShowNewFileInput] = useState(false)
+  const [showNewFolderInput, setShowNewFolderInput] = useState(false)
+  const [newFileName, setNewFileName] = useState("")
+  const [newFolderName, setNewFolderName] = useState("")
+  const [creatingInPath, setCreatingInPath] = useState("")
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; node: FileNode } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
@@ -468,6 +473,123 @@ Welcome to your new markdown file!
     }
   }
 
+  const getDefaultFileContent = (fileName: string): string => {
+    const extension = fileName.split(".").pop()?.toLowerCase()
+
+    const templates: Record<string, string> = {
+      js: `// ${fileName}\nconsole.log("Hello from ${fileName}");\n`,
+      jsx: `import React from 'react';\n\nfunction ${fileName.replace(".jsx", "").replace(/[^a-zA-Z0-9]/g, "")}() {\n  return (\n    <div>\n      <h1>Hello from ${fileName}</h1>\n    </div>\n  );\n}\n\nexport default ${fileName.replace(".jsx", "").replace(/[^a-zA-Z0-9]/g, "")};\n`,
+      ts: `// ${fileName}\nconsole.log("Hello from ${fileName}");\n`,
+      tsx: `import React from 'react';\n\ninterface Props {}\n\nfunction ${fileName.replace(".tsx", "").replace(/[^a-zA-Z0-9]/g, "")}({}: Props) {\n  return (\n    <div>\n      <h1>Hello from ${fileName}</h1>\n    </div>\n  );\n}\n\nexport default ${fileName.replace(".tsx", "").replace(/[^a-zA-Z0-9]/g, "")};\n`,
+      py: `# ${fileName}\nprint("Hello from ${fileName}")\n`,
+      css: `/* ${fileName} */\nbody {\n  font-family: Arial, sans-serif;\n  margin: 0;\n  padding: 20px;\n}\n`,
+      html: `<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>${fileName.replace(".html", "")}</title>\n</head>\n<body>\n  <h1>Hello from ${fileName}</h1>\n</body>\n</html>\n`,
+      md: `# ${fileName.replace(".md", "")}\n\nWelcome to your new markdown file!\n`,
+      json: `{\n  "name": "${fileName.replace(".json", "")}",\n  "version": "1.0.0"\n}\n`,
+    }
+
+    return templates[extension || ""] || `// ${fileName}\n// Start coding here!\n`
+  }
+
+  const handleCreateFile = (path: string = "") => {
+    setCreatingInPath(path)
+    setShowNewFileInput(true)
+    setNewFileName("")
+    setTimeout(() => fileInputRef.current?.focus(), 100)
+  }
+
+  const handleCreateFolder = (path: string = "") => {
+    setCreatingInPath(path)
+    setShowNewFolderInput(true)
+    setNewFolderName("")
+    setTimeout(() => folderInputRef.current?.focus(), 100)
+  }
+
+  const confirmCreateFile = () => {
+    if (!newFileName.trim()) return
+    
+    const fullPath = creatingInPath ? `${creatingInPath}/${newFileName}` : newFileName
+    const defaultContent = getDefaultFileContent(newFileName)
+    
+    // Add to file contents
+    onFileContentChange(fullPath, defaultContent)
+    
+    // Add to file tree
+    const newNode: FileNode = {
+      name: newFileName,
+      type: "file",
+      path: fullPath,
+      content: defaultContent
+    }
+    
+    if (creatingInPath) {
+      // Add to existing folder
+      const updateTree = (nodes: FileNode[]): FileNode[] => {
+        return nodes.map(node => {
+          if (node.path === creatingInPath && node.type === "folder") {
+            return {
+              ...node,
+              children: [...(node.children || []), newNode]
+            }
+          }
+          if (node.children) {
+            return { ...node, children: updateTree(node.children) }
+          }
+          return node
+        })
+      }
+      setFileTree(updateTree(fileTree))
+    } else {
+      // Add to root
+      setFileTree([...fileTree, newNode])
+    }
+    
+    setShowNewFileInput(false)
+    setNewFileName("")
+    setCreatingInPath("")
+    onFileSelect(fullPath)
+  }
+
+  const confirmCreateFolder = () => {
+    if (!newFolderName.trim()) return
+    
+    const fullPath = creatingInPath ? `${creatingInPath}/${newFolderName}` : newFolderName
+    
+    const newNode: FileNode = {
+      name: newFolderName,
+      type: "folder",
+      path: fullPath,
+      children: [],
+      expanded: false
+    }
+    
+    if (creatingInPath) {
+      // Add to existing folder
+      const updateTree = (nodes: FileNode[]): FileNode[] => {
+        return nodes.map(node => {
+          if (node.path === creatingInPath && node.type === "folder") {
+            return {
+              ...node,
+              children: [...(node.children || []), newNode]
+            }
+          }
+          if (node.children) {
+            return { ...node, children: updateTree(node.children) }
+          }
+          return node
+        })
+      }
+      setFileTree(updateTree(fileTree))
+    } else {
+      // Add to root
+      setFileTree([...fileTree, newNode])
+    }
+    
+    setShowNewFolderInput(false)
+    setNewFolderName("")
+    setCreatingInPath("")
+  }
+
   const handleContextMenu = (e: React.MouseEvent, node: FileNode) => {
     e.preventDefault()
     e.stopPropagation()
@@ -568,10 +690,10 @@ Welcome to your new markdown file!
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-primary">Explorer</h2>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={createNewFile} title="New File">
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => handleCreateFile()} title="New File">
               <FilePlus className="h-3 w-3" />
             </Button>
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={createNewFolder} title="New Folder">
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => handleCreateFolder()} title="New Folder">
               <FolderPlus className="h-3 w-3" />
             </Button>
             <Button
@@ -624,6 +746,75 @@ Welcome to your new markdown file!
           onChange={handleFolderUpload}
           style={{ display: "none" }}
         />
+
+        {/* Inline File Creation */}
+        {showNewFileInput && (
+          <div className="p-2 border-b border-sidebar-border">
+            <div className="flex gap-2">
+              <Input
+                ref={fileInputRef}
+                value={newFileName}
+                onChange={(e) => setNewFileName(e.target.value)}
+                placeholder="Enter filename (e.g., script.js)"
+                className="text-xs h-7"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    confirmCreateFile()
+                  } else if (e.key === 'Escape') {
+                    setShowNewFileInput(false)
+                    setNewFileName("")
+                    setCreatingInPath("")
+                  }
+                }}
+                autoFocus
+              />
+              <Button size="sm" onClick={confirmCreateFile} className="h-7 px-2 text-xs">
+                Create
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => {
+                setShowNewFileInput(false)
+                setNewFileName("")
+                setCreatingInPath("")
+              }} className="h-7 px-2 text-xs">
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {showNewFolderInput && (
+          <div className="p-2 border-b border-sidebar-border">
+            <div className="flex gap-2">
+              <Input
+                ref={folderInputRef}
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                placeholder="Enter folder name"
+                className="text-xs h-7"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    confirmCreateFolder()
+                  } else if (e.key === 'Escape') {
+                    setShowNewFolderInput(false)
+                    setNewFolderName("")
+                    setCreatingInPath("")
+                  }
+                }}
+                autoFocus
+              />
+              <Button size="sm" onClick={confirmCreateFolder} className="h-7 px-2 text-xs">
+                Create
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => {
+                setShowNewFolderInput(false)
+                setNewFolderName("")
+                setCreatingInPath("")
+              }} className="h-7 px-2 text-xs">
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
 
         <div className="relative">
           <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-muted-foreground" />
