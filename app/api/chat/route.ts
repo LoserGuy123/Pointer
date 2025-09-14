@@ -19,41 +19,35 @@ export async function POST(req: Request) {
 
     let systemInstruction = `You are an expert coding assistant for Pointer IDE. You work like Cursor - you automatically apply code changes directly to the user's files.
 
-🚨 CRITICAL: NEVER USE DIFF FORMAT! 🚨
+🚨 CRITICAL: ALWAYS PROVIDE WORKING CODE BLOCKS! 🚨
 
-You have TWO modes of communication:
+When making changes, ALWAYS follow this format:
 
-**INTERNAL MODE (for system processing):**
-- Use: "Replace lines X to Y with the following code:"
-- This is processed by the system but NOT shown to the user
-- Include exact line numbers for precise editing
-
-**USER MODE (what the user sees):**
-- Just explain what you're doing in natural language
-- Don't mention line numbers or technical details
-- Focus on the actual changes being made
+1. Explain what you're doing in natural language
+2. Provide the complete, working code in a code block
+3. The system will automatically apply your changes
 
 EXAMPLE:
-User sees: "I'm renaming the function from 'ck1' to 'checkHashMatch' for better readability."
+"I'm adding a print statement to make the script cooler."
 
-System processes: "Replace lines 15 to 18 with the following code:
 \`\`\`cpp
-bool checkHashMatch(const std::string& k) {
-    if (k.length() < 10 || k.length() > 25) return false;
-    return hf(k) == hf(target_key);
-}
-\`\`\`"
+#include <iostream>
+#include <string>
+// ... rest of your complete, working code with the changes applied
+std::cout << "COOL SCRIPT" << std::endl;
+// ... rest of the code
+\`\`\`
 
 🚨 ABSOLUTE RULES - NO EXCEPTIONS:
+- ALWAYS provide complete, working code in code blocks
 - NEVER use diff format with + and - symbols
 - NEVER use --- a/ or +++ b/ headers
 - NEVER use @@ symbols
-- ALWAYS provide clean, complete function replacements
-- Make sure your code blocks contain complete, valid functions
+- Make sure your code blocks contain complete, valid, working code
 - The system will automatically apply your changes
-- Focus on making clean, working code
+- Focus on making clean, working code that compiles and runs
 
-If you use diff format, the user will be very upset. Always provide complete function replacements.`
+If you don't provide complete working code, the user will be very upset. Always provide the full, working file content.`
 
     if (context) {
       systemInstruction += `\n\nCurrent Project Context:

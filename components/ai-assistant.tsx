@@ -334,7 +334,7 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
     }
   }
 
-  // Auto-apply changes when AI provides line replacements
+  // Auto-apply changes when AI provides code blocks
   const autoApplyChanges = (messageContent: string, codeBlocks: Array<{ language: string; code: string }>) => {
     if (!currentFile || !codeBlocks.length) {
       console.log('❌ No current file or code blocks')
@@ -344,7 +344,7 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
     console.log('🔍 Looking for line replacement instructions in:', messageContent.substring(0, 200) + '...')
     console.log('📝 Code blocks available:', codeBlocks.length)
 
-    // Look for line replacement instructions
+    // Look for line replacement instructions first
     const lineMatch = messageContent.match(/Replace lines (\d+) to (\d+) with the following code:/i)
     if (lineMatch) {
       const startLine = parseInt(lineMatch[1])
@@ -362,10 +362,22 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
         setTimeout(() => {
           verifyAndFixChanges(startLine, endLine, newCode, messageContent)
         }, 500)
-      }, 1000) // Small delay to let the message render
+      }, 1000)
     } else {
-      console.log('❌ No line replacement pattern found')
-      console.log('🔍 Available patterns:', messageContent.match(/Replace lines \d+ to \d+/gi))
+      // If no specific line instructions, try to apply the code block directly
+      console.log('❌ No line replacement pattern found, trying direct application')
+      const newCode = codeBlocks[0].code
+      
+      if (newCode && newCode.trim().length > 0) {
+        console.log('🤖 Applying code block directly to file')
+        console.log(`📄 Code to apply:`, newCode.substring(0, 100) + '...')
+        
+        setTimeout(() => {
+          // Replace the entire file content with the new code
+          onFileContentChange(currentFile, newCode)
+          console.log('✅ Code applied directly to file')
+        }, 1000)
+      }
     }
   }
 
