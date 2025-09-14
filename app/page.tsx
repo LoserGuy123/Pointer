@@ -10,7 +10,6 @@ import { MenuBar } from "@/components/menu-bar"
 import { Button } from "@/components/ui/button"
 import { PanelLeft, PanelRight, TerminalIcon, MessageSquare, FolderOpen } from "lucide-react"
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable"
-import { CreateDialog } from "@/components/ui/create-dialog"
 
 export default function PointerIDE() {
   const [leftPanelOpen, setLeftPanelOpen] = useState(true)
@@ -18,8 +17,6 @@ export default function PointerIDE() {
   const [terminalOpen, setTerminalOpen] = useState(false)
   const [currentFile, setCurrentFile] = useState("")
   const [fileContents, setFileContents] = useState<Record<string, string>>({})
-  const [createDialogOpen, setCreateDialogOpen] = useState(false)
-  const [createDialogType, setCreateDialogType] = useState<'file' | 'folder'>('file')
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -67,25 +64,16 @@ export default function PointerIDE() {
   }
 
   const handleNewFile = () => {
-    setCreateDialogType('file')
-    setCreateDialogOpen(true)
+    const fileName = prompt("Enter file name:")
+    if (!fileName) return
+
+    const defaultContent = getDefaultFileContent(fileName)
+    setFileContents((prev) => ({ ...prev, [fileName]: defaultContent }))
+    setCurrentFile(fileName)
   }
 
   const handleNewFolder = () => {
-    setCreateDialogType('folder')
-    setCreateDialogOpen(true)
-  }
-
-  const handleCreate = (name: string, type: 'file' | 'folder', extension?: string) => {
-    if (type === 'file') {
-      const defaultContent = getDefaultFileContent(name)
-      setFileContents((prev) => ({ ...prev, [name]: defaultContent }))
-      setCurrentFile(name)
-    } else {
-      // For folders, we'll just create an empty entry for now
-      // In a real implementation, you'd want to handle folder structure
-      console.log(`Created folder: ${name}`)
-    }
+    alert("Use the folder icon in the file explorer to create new folders")
   }
 
   const handleSave = () => {
@@ -324,14 +312,6 @@ export default function PointerIDE() {
 
       {/* Status Bar */}
       <StatusBar currentFile={currentFile} fileContents={fileContents} />
-
-      {/* Create Dialog */}
-      <CreateDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        onCreate={handleCreate}
-        type={createDialogType}
-      />
     </div>
   )
 }

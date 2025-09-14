@@ -30,16 +30,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 
 interface Message {
   id: string
@@ -143,10 +133,9 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [isUserScrolling, setIsUserScrolling] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
-  const [isUserScrolling, setIsUserScrolling] = useState(false)
-  const [shouldAutoScroll, setShouldAutoScroll] = useState(true)
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Load chat history from localStorage on component mount
@@ -170,7 +159,7 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
   }, [messages])
 
   const scrollToBottom = () => {
-    if (messagesEndRef.current && shouldAutoScroll && !isUserScrolling) {
+    if (messagesEndRef.current && !isUserScrolling) {
       messagesEndRef.current.scrollIntoView({
         behavior: "smooth",
         block: "end",
@@ -180,28 +169,61 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
   }
 
   // Handle scroll events to detect user scrolling
-  const handleScroll = () => {
-    if (!messagesContainerRef.current) return
-    
+  useEffect(() => {
     const container = messagesContainerRef.current
-    const isAtBottom = container.scrollHeight - container.scrollTop === container.clientHeight
-    
-    if (isAtBottom) {
-      setIsUserScrolling(false)
-      setShouldAutoScroll(true)
-    } else {
+    if (!container) return
+
+    let scrollTimeout: NodeJS.Timeout
+
+    const handleScroll = () => {
       setIsUserScrolling(true)
-      setShouldAutoScroll(false)
+      clearTimeout(scrollTimeout)
+      
+      // Reset user scrolling flag after 2 seconds of no scrolling
+      scrollTimeout = setTimeout(() => {
+        setIsUserScrolling(false)
+      }, 2000)
     }
-  }
+
+    container.addEventListener('scroll', handleScroll)
+    return () => {
+      container.removeEventListener('scroll', handleScroll)
+      clearTimeout(scrollTimeout)
+    }
+  }, [])
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages, shouldAutoScroll, isUserScrolling])
+  }, [messages, isUserScrolling])
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl/Cmd + Enter to send message
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault()
+        if (input.trim() && !isLoading) {
+          handleSubmit(e as any)
+        }
+      }
+      
+      // Escape to clear input
+      if (e.key === 'Escape') {
+        setInput('')
+        inputRef.current?.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [input, isLoading])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!input.trim() || isLoading) return
+    
+    // Clear user scrolling flag when sending new message
+    setIsUserScrolling(false)
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -504,16 +526,11 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
   }
 
 
-  const [showClearDialog, setShowClearDialog] = useState(false)
-
   const clearChatHistory = () => {
-    setShowClearDialog(true)
-  }
-
-  const confirmClearChat = () => {
-    setMessages([])
-    localStorage.removeItem('pointer-ide-chat-history')
-    setShowClearDialog(false)
+    if (confirm('Are you sure you want to clear the chat history?')) {
+      setMessages([])
+      localStorage.removeItem('pointer-ide-chat-history')
+    }
   }
 
   return (
@@ -579,11 +596,7 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
       )}
 
       {/* Messages */}
-      <div 
-        ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto editor-scrollbar p-4 space-y-4"
-        onScroll={handleScroll}
-      >
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto editor-scrollbar p-4 space-y-4">
         {messages.map((message) => (
           <div key={message.id} className={cn("flex gap-3", message.role === "user" && "flex-row-reverse")}>
             <div
@@ -710,43 +723,37 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
       {/* Input Area */}
       <div className="p-4 border-t border-sidebar-border">
         <form onSubmit={handleSubmit} className="flex gap-2">
-          <Input
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask AI anything about your code..."
-            className="flex-1 bg-input border-border"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault()
-                handleSubmit(e)
-              }
-            }}
-          />
+          <div className="flex-1 relative">
+            <Input
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask AI anything about your code... (Ctrl+Enter to send, Esc to clear)"
+              className="flex-1 bg-input border-border pr-12"
+              maxLength={2000}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault()
+                  handleSubmit(e)
+                }
+              }}
+            />
+            <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground">
+              {input.length}/2000
+            </div>
+          </div>
           <Button type="submit" disabled={!input.trim() || isLoading} size="sm" className="px-3 btn-primary">
-            <Send className="h-4 w-4" />
+            {isLoading ? (
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
           </Button>
         </form>
-        <p className="text-xs text-muted-foreground mt-2">Press Enter to send, Shift+Enter for new line</p>
+        <p className="text-xs text-muted-foreground mt-2">
+          Press Enter to send • Shift+Enter for new line • Ctrl+Enter to send • Esc to clear
+        </p>
       </div>
-
-      {/* Clear Chat Confirmation Dialog */}
-      <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Clear Chat History</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to clear all chat history? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmClearChat}>
-              Clear History
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }
