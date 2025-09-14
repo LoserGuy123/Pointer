@@ -190,8 +190,12 @@ export function FileExplorer({ currentFile, onFileSelect, fileContents, onFileCo
           content: content,
         }
 
-        setFileTree((prev) => [...prev, newFile])
-        setFilteredTree((prev) => [...prev, newFile])
+        const newTree = [...fileTree, newFile]
+        setFileTree(newTree)
+        setFilteredTree(newTree)
+        
+        // Save to localStorage
+        localStorage.setItem('pointer-ide-file-tree', JSON.stringify(newTree))
 
         onFileSelect(file.name)
       }
@@ -236,6 +240,8 @@ export function FileExplorer({ currentFile, onFileSelect, fileContents, onFileCo
     })
 
     setTimeout(() => {
+      let newTree = [...fileTree]
+      
       Object.entries(folderStructure).forEach(([folderPath, files]) => {
         if (folderPath) {
           const folderNode: FileNode = {
@@ -245,13 +251,17 @@ export function FileExplorer({ currentFile, onFileSelect, fileContents, onFileCo
             expanded: true,
             children: files,
           }
-          setFileTree((prev) => [...prev, folderNode])
-          setFilteredTree((prev) => [...prev, folderNode])
+          newTree = [...newTree, folderNode]
         } else {
-          setFileTree((prev) => [...prev, ...files])
-          setFilteredTree((prev) => [...prev, ...files])
+          newTree = [...newTree, ...files]
         }
       })
+      
+      setFileTree(newTree)
+      setFilteredTree(newTree)
+      
+      // Save to localStorage
+      localStorage.setItem('pointer-ide-file-tree', JSON.stringify(newTree))
     }, 100)
   }
 
@@ -364,6 +374,9 @@ Welcome to your new markdown file!
     delete newContents[pathToDelete]
     onFileContentChange(pathToDelete, "") // Clear the content
 
+    // Save updated tree to localStorage
+    localStorage.setItem('pointer-ide-file-tree', JSON.stringify(newTree))
+
     // If the deleted file was currently open, clear the selection
     if (currentFile === pathToDelete) {
       onFileSelect("")
@@ -444,9 +457,10 @@ Welcome to your new markdown file!
   }
 
   const clearAllFiles = () => {
-    setFileTree([])
-    setFilteredTree([])
-    localStorage.removeItem('pointer-ide-file-tree')
+    const emptyTree: FileNode[] = []
+    setFileTree(emptyTree)
+    setFilteredTree(emptyTree)
+    localStorage.setItem('pointer-ide-file-tree', JSON.stringify(emptyTree))
     onFileSelect('')
     console.log('🗑️ Cleared all files')
   }
@@ -483,6 +497,8 @@ Welcome to your new markdown file!
       content: defaultContent
     }
     
+    let newTree: FileNode[]
+    
     if (creatingInPath) {
       // Add to existing folder
       const updateTree = (nodes: FileNode[]): FileNode[] => {
@@ -499,16 +515,25 @@ Welcome to your new markdown file!
           return node
         })
       }
-      setFileTree(updateTree(fileTree))
+      newTree = updateTree(fileTree)
     } else {
       // Add to root
-      setFileTree([...fileTree, newNode])
+      newTree = [...fileTree, newNode]
     }
+    
+    // Update both trees
+    setFileTree(newTree)
+    setFilteredTree(newTree)
+    
+    // Save to localStorage
+    localStorage.setItem('pointer-ide-file-tree', JSON.stringify(newTree))
     
     setShowNewFileInput(false)
     setNewFileName("")
     setCreatingInPath("")
     onFileSelect(fullPath)
+    
+    console.log(`📄 Created file: ${fullPath}`)
   }
 
   const confirmCreateFolder = () => {
@@ -524,6 +549,8 @@ Welcome to your new markdown file!
       expanded: false
     }
     
+    let newTree: FileNode[]
+    
     if (creatingInPath) {
       // Add to existing folder
       const updateTree = (nodes: FileNode[]): FileNode[] => {
@@ -540,15 +567,24 @@ Welcome to your new markdown file!
           return node
         })
       }
-      setFileTree(updateTree(fileTree))
+      newTree = updateTree(fileTree)
     } else {
       // Add to root
-      setFileTree([...fileTree, newNode])
+      newTree = [...fileTree, newNode]
     }
+    
+    // Update both trees
+    setFileTree(newTree)
+    setFilteredTree(newTree)
+    
+    // Save to localStorage
+    localStorage.setItem('pointer-ide-file-tree', JSON.stringify(newTree))
     
     setShowNewFolderInput(false)
     setNewFolderName("")
     setCreatingInPath("")
+    
+    console.log(`📁 Created folder: ${fullPath}`)
   }
 
   const handleContextMenu = (e: React.MouseEvent, node: FileNode) => {
