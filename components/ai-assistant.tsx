@@ -21,6 +21,7 @@ import {
   Check,
   X,
   Trash2,
+  RotateCcw,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import ReactMarkdown from "react-markdown"
@@ -453,38 +454,41 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
 
   const autoSaveFile = async (fileName: string, content: string) => {
     try {
-      if ("showSaveFilePicker" in window) {
-        // Use File System Access API if available
-        const fileHandle = await (window as any).showSaveFilePicker({
-          suggestedName: fileName,
-          types: [
-            {
-              description: "Text files",
-              accept: {
-                "text/plain": [".txt", ".js", ".jsx", ".ts", ".tsx", ".py", ".css", ".html", ".json", ".md", ".cpp", ".c", ".h"],
-              },
-            },
-          ],
-        })
-        const writable = await fileHandle.createWritable()
-        await writable.write(content)
-        await writable.close()
-        console.log(`💾 Auto-saved ${fileName}`)
-      } else {
-        // Fallback: download the file
-        const blob = new Blob([content], { type: "text/plain" })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement("a")
-        a.href = url
-        a.download = fileName
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
-        console.log(`💾 Auto-saved ${fileName} (downloaded)`)
+      // Store file content in localStorage for persistence
+      const fileKey = `pointer-ide-file-${fileName}`
+      localStorage.setItem(fileKey, content)
+      console.log(`💾 Auto-saved ${fileName} to localStorage`)
+      
+      // Also try to save to file system if user has granted permission
+      if (window.fileHandle) {
+        try {
+          const writable = await window.fileHandle.createWritable()
+          await writable.write(content)
+          await writable.close()
+          console.log(`💾 Auto-saved ${fileName} to file system`)
+        } catch (error) {
+          console.log('File system save failed, using localStorage only:', error)
+        }
       }
     } catch (error) {
-      console.log('Auto-save cancelled or failed:', error)
+      console.log('Auto-save failed:', error)
+    }
+  }
+
+  const revertToMessage = (messageIndex: number) => {
+    if (messageIndex < 0 || messageIndex >= messages.length) return
+    
+    const targetMessage = messages[messageIndex]
+    if (targetMessage.role !== 'assistant' || !targetMessage.codeBlocks?.length) {
+      alert('This message doesn\'t contain code to revert to')
+      return
+    }
+    
+    // Find the last code block from this message
+    const lastCodeBlock = targetMessage.codeBlocks[targetMessage.codeBlocks.length - 1]
+    if (lastCodeBlock && currentFile) {
+      onFileContentChange(currentFile, lastCodeBlock.code)
+      console.log(`🔄 Reverted to code from message ${messageIndex + 1}`)
     }
   }
 
@@ -574,13 +578,23 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
               )}
             </div>
 
-            <div className={cn("flex-1 max-w-[80%]", message.role === "user" && "text-right")}>
+            <div className={cn("flex-1 max-w-[80%] group", message.role === "user" && "text-right")}>
               <div
                 className={cn(
-                  "rounded-lg p-3 text-sm",
+                  "rounded-lg p-3 text-sm relative",
                   message.role === "user" ? "bg-accent text-accent-foreground ml-auto" : "bg-card text-card-foreground",
                 )}
               >
+                {/* Revert button - only show on hover for assistant messages with code */}
+                {message.role === "assistant" && message.codeBlocks && message.codeBlocks.length > 0 && (
+                  <button
+                    onClick={() => revertToMessage(index)}
+                    className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-accent hover:bg-accent/80 text-accent-foreground rounded-full p-1.5 shadow-lg z-10"
+                    title="Revert to this code state"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                  </button>
+                )}
                 {message.role === "assistant" ? (
                   message.isTyping ? (
                     <TypingMessage content={message.content} onComplete={() => handleTypingComplete(message.id)} />

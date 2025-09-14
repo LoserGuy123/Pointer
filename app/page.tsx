@@ -7,7 +7,6 @@ import { AIAssistant } from "@/components/ai-assistant"
 import { Terminal } from "@/components/terminal"
 import { StatusBar } from "@/components/status-bar"
 import { MenuBar } from "@/components/menu-bar"
-import { ProjectManager } from "@/components/project-manager"
 import { Button } from "@/components/ui/button"
 import { PanelLeft, PanelRight, TerminalIcon, MessageSquare, FolderOpen } from "lucide-react"
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable"
@@ -17,7 +16,6 @@ export default function PointerIDE() {
   const [rightPanelOpen, setRightPanelOpen] = useState(true)
   const [terminalOpen, setTerminalOpen] = useState(false)
   const [currentFile, setCurrentFile] = useState("")
-  const [showProjectManager, setShowProjectManager] = useState(false)
   const [fileContents, setFileContents] = useState<Record<string, string>>({})
 
   useEffect(() => {
@@ -180,30 +178,6 @@ export default function PointerIDE() {
     return templates[extension || ""] || `// ${fileName}\n// Start coding here!\n`
   }
 
-  if (showProjectManager) {
-    return (
-      <div className="h-screen flex flex-col bg-background text-foreground">
-        <MenuBar
-          onNewFile={handleNewFile}
-          onNewFolder={handleNewFolder}
-          onSave={handleSave}
-          onUpload={handleUpload}
-          onDownload={handleDownload}
-        />
-        <div className="flex-1 flex">
-          <div className="flex-1">
-            <ProjectManager />
-          </div>
-          <div className="w-12 border-l border-border glass flex flex-col items-center py-4 gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setShowProjectManager(false)} className="h-8 w-8 p-0">
-              <FolderOpen className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-        <StatusBar />
-      </div>
-    )
-  }
 
   return (
     <div className="h-screen flex flex-col bg-background text-foreground">
@@ -249,14 +223,6 @@ export default function PointerIDE() {
                     className="smooth-transition"
                   >
                     <PanelLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowProjectManager(true)}
-                    className="smooth-transition"
-                  >
-                    <FolderOpen className="h-4 w-4" />
                   </Button>
                   <div className="text-sm text-muted-foreground">{currentFile || "No file selected"}</div>
                 </div>
