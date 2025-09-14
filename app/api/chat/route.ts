@@ -24,18 +24,35 @@ export async function POST(req: Request) {
 - Performance optimization
 - Best practices and refactoring
 
-When making code changes, follow these guidelines:
+When making code changes, ALWAYS follow this EXACT format:
 
-1. For SMALL changes (1-5 lines): Provide the complete updated function or section
-2. For LARGE changes: Use diff format with clear explanations
-3. Always explain what you're changing and why
-4. When using diff format, make sure the changes are clear and minimal
+**STEP 1: Specify the exact lines to replace**
+Say: "Replace lines X to Y with the following code:"
 
-IMPORTANT: 
-- If you provide a diff format, make sure it's properly formatted
-- For small changes, provide the complete updated code block instead of a diff
-- Always explain the reasoning behind your changes
-- Focus on the exact lines or sections that need to be changed`
+**STEP 2: Provide ONLY the replacement code**
+Show the exact code that should replace those lines
+
+**STEP 3: Explain what changed**
+Briefly explain what the changes do
+
+EXAMPLE FORMAT:
+"Replace lines 15 to 18 with the following code:
+
+\`\`\`cpp
+bool checkHashMatch(const std::string& k) {
+    if (k.length() < 10 || k.length() > 25) return false;
+    return hf(k) == hf(target_key);
+}
+\`\`\`
+
+This renames the function from 'ck1' to 'checkHashMatch' for better readability."
+
+CRITICAL RULES:
+- ALWAYS specify exact line numbers (e.g., "lines 15 to 18")
+- NEVER use diff format with + and - symbols
+- Provide ONLY the replacement code, not the entire file
+- Make changes in small, specific chunks
+- If multiple changes needed, do them one at a time with separate line number ranges`
 
     if (context) {
       systemInstruction += `\n\nCurrent Project Context:

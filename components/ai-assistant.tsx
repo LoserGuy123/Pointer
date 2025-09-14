@@ -293,9 +293,31 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
           }
         }
       } else {
-        // This is regular code, apply it directly
+        // This is regular code - apply it directly
         onFileContentChange(currentFile, code)
       }
+    }
+  }
+
+  const applyLineReplacement = (startLine: number, endLine: number, newCode: string) => {
+    if (currentFile) {
+      const currentContent = fileContents[currentFile] || ""
+      const lines = currentContent.split('\n')
+      
+      // Validate line numbers
+      if (startLine < 1 || endLine > lines.length || startLine > endLine) {
+        alert(`Invalid line numbers: ${startLine} to ${endLine}. File has ${lines.length} lines.`)
+        return
+      }
+      
+      // Replace the specified lines
+      const newLines = [
+        ...lines.slice(0, startLine - 1), // Lines before the replacement
+        ...newCode.split('\n'),           // The new code
+        ...lines.slice(endLine)           // Lines after the replacement
+      ]
+      
+      onFileContentChange(currentFile, newLines.join('\n'))
     }
   }
 
@@ -427,45 +449,64 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
 
               {message.role === "assistant" && !message.isTyping && message.codeBlocks && currentFile && (
                 <div className="mt-2 space-y-2">
-                  {message.codeBlocks.map((block, index) => (
-                    <div key={index} className="flex items-center gap-2 p-2 bg-muted/20 rounded text-xs">
-                      <FileText className="h-3 w-3 text-muted-foreground" />
-                      <span className="flex-1 text-muted-foreground">
-                        {block.code.includes('--- a/') && block.code.includes('+++ b/') 
-                          ? `Apply diff to ${currentFile}` 
-                          : `Apply ${block.language} code to ${currentFile}`}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 px-2 text-blue-600 hover:text-blue-700"
-                        onClick={() => {
-                          // Show the code in a modal or alert for review
-                          const isDiff = block.code.includes('--- a/') && block.code.includes('+++ b/')
-                          if (isDiff) {
-                            alert(`Diff Preview:\n\n${block.code.substring(0, 1000)}${block.code.length > 1000 ? '\n\n... (truncated)' : ''}`)
-                          } else {
-                            alert(`Code Preview:\n\n${block.code.substring(0, 1000)}${block.code.length > 1000 ? '\n\n... (truncated)' : ''}`)
-                          }
-                        }}
-                        title="Preview code before applying"
-                      >
-                        👁️
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 px-2 text-green-600 hover:text-green-700"
-                        onClick={() => applyCodeToFile(block.code)}
-                        title="Apply code to file"
-                      >
-                        <Check className="h-3 w-3" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-6 px-2 text-red-600 hover:text-red-700" title="Dismiss">
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ))}
+                  {message.codeBlocks.map((block, index) => {
+                    // Check if this is a line replacement instruction
+                    const lineMatch = message.content.match(/Replace lines (\d+) to (\d+) with the following code:/i)
+                    const isLineReplacement = lineMatch !== null
+                    const startLine = isLineReplacement ? parseInt(lineMatch[1]) : null
+                    const endLine = isLineReplacement ? parseInt(lineMatch[2]) : null
+                    
+                    return (
+                      <div key={index} className="flex items-center gap-2 p-2 bg-muted/20 rounded text-xs">
+                        <FileText className="h-3 w-3 text-muted-foreground" />
+                        <span className="flex-1 text-muted-foreground">
+                          {isLineReplacement 
+                            ? `Replace lines ${startLine}-${endLine} in ${currentFile}`
+                            : block.code.includes('--- a/') && block.code.includes('+++ b/') 
+                              ? `Apply diff to ${currentFile}` 
+                              : `Apply ${block.language} code to ${currentFile}`}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-blue-600 hover:text-blue-700"
+                          onClick={() => {
+                            // Show the code in a modal or alert for review
+                            const isDiff = block.code.includes('--- a/') && block.code.includes('+++ b/')
+                            if (isDiff) {
+                              alert(`Diff Preview:\n\n${block.code.substring(0, 1000)}${block.code.length > 1000 ? '\n\n... (truncated)' : ''}`)
+                            } else {
+                              alert(`Code Preview:\n\n${block.code.substring(0, 1000)}${block.code.length > 1000 ? '\n\n... (truncated)' : ''}`)
+                            }
+                          }}
+                          title="Preview code before applying"
+                        >
+                          👁️
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-green-600 hover:text-green-700"
+                          onClick={() => {
+                            if (isLineReplacement && startLine && endLine) {
+                              const confirmMsg = `Replace lines ${startLine} to ${endLine} with the new code?\n\nThis will modify your file at those specific lines.`
+                              if (confirm(confirmMsg)) {
+                                applyLineReplacement(startLine, endLine, block.code)
+                              }
+                            } else {
+                              applyCodeToFile(block.code)
+                            }
+                          }}
+                          title={isLineReplacement ? "Replace specific lines" : "Apply code to file"}
+                        >
+                          <Check className="h-3 w-3" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-6 px-2 text-red-600 hover:text-red-700" title="Dismiss">
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
 
