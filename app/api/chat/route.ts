@@ -19,35 +19,35 @@ export async function POST(req: Request) {
 
     let systemInstruction = `You are an expert coding assistant for Pointer IDE. You work like Cursor - you automatically apply code changes directly to the user's files.
 
-🚨 CRITICAL: ALWAYS PROVIDE WORKING CODE BLOCKS! 🚨
+🚨 CRITICAL: LISTEN TO THE USER AND APPLY CHANGES SILENTLY! 🚨
 
-When making changes, ALWAYS follow this format:
+When the user asks for changes:
 
-1. Explain what you're doing in natural language
-2. Provide the complete, working code in a code block
-3. The system will automatically apply your changes
+1. Understand exactly what they want
+2. Apply the changes to the complete code
+3. Provide the updated code in a code block (this gets applied automatically)
+4. Keep your response brief and focused on what you did
 
 EXAMPLE:
-"I'm adding a print statement to make the script cooler."
+User: "Add a print statement that says 'COOL SCRIPT'"
+You: "Added the print statement to make your script cooler."
 
 \`\`\`cpp
-#include <iostream>
-#include <string>
-// ... rest of your complete, working code with the changes applied
-std::cout << "COOL SCRIPT" << std::endl;
-// ... rest of the code
+// Complete updated code with the changes applied
 \`\`\`
 
 🚨 ABSOLUTE RULES - NO EXCEPTIONS:
+- ALWAYS listen to what the user actually wants
 - ALWAYS provide complete, working code in code blocks
+- NEVER show code in your chat response - it's applied automatically
 - NEVER use diff format with + and - symbols
 - NEVER use --- a/ or +++ b/ headers
 - NEVER use @@ symbols
+- Keep responses brief and focused
 - Make sure your code blocks contain complete, valid, working code
-- The system will automatically apply your changes
-- Focus on making clean, working code that compiles and runs
+- The system will automatically apply your changes silently
 
-If you don't provide complete working code, the user will be very upset. Always provide the full, working file content.`
+Focus on understanding the user's request and delivering exactly what they asked for.`
 
     if (context) {
       systemInstruction += `\n\nCurrent Project Context:
@@ -97,11 +97,19 @@ If you don't provide complete working code, the user will be very upset. Always 
       content = "⚠️ WARNING: I accidentally provided diff format. Please ask me to provide the changes using the 'Replace lines X to Y' format instead. I should not use diff format with + and - symbols.\n\n" + content
     }
 
-    // Clean up user-facing content - remove technical line number references
+    // Clean up user-facing content - remove technical line number references and code blocks
     content = content.replace(/Replace lines \d+ to \d+ with the following code:/gi, '')
     content = content.replace(/Replace lines \d+ to \d+ with:/gi, '')
-    content = content.replace(/Here's the updated code:/gi, 'Here\'s the updated code:')
-    content = content.replace(/Here is the updated code:/gi, 'Here\'s the updated code:')
+    content = content.replace(/Here's the updated code:/gi, '')
+    content = content.replace(/Here is the updated code:/gi, '')
+    content = content.replace(/Here's the code:/gi, '')
+    content = content.replace(/Here is the code:/gi, '')
+    
+    // Remove code blocks from user-facing content since they're already applied
+    content = content.replace(/```[\s\S]*?```/g, '')
+    
+    // Clean up any leftover empty lines or formatting issues
+    content = content.replace(/\n\s*\n\s*\n/g, '\n\n').trim()
 
     const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g
     const codeBlocks = []

@@ -571,10 +571,10 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
               </div>
 
               {message.role === "assistant" && !message.isTyping && message.codeBlocks && currentFile && (
-                <div className="mt-2 p-2 bg-green-500/10 border border-green-500/20 rounded text-xs text-green-600">
-                  <div className="flex items-center gap-2">
-                    <Check className="h-3 w-3" />
-                    <span>Changes applied automatically to {currentFile}</span>
+                <div className="mt-1 p-1 bg-green-500/5 border border-green-500/10 rounded text-xs text-green-500/70">
+                  <div className="flex items-center gap-1">
+                    <Check className="h-2 w-2" />
+                    <span>Applied</span>
                   </div>
                 </div>
               )}
