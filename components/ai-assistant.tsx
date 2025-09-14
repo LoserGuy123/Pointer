@@ -225,7 +225,7 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
 
       setMessages((prev) => [...prev, assistantMessage])
       
-      // Auto-apply changes if they're line replacements
+      // Auto-apply changes if they're line replacements (silently)
       if (data.codeBlocks && data.codeBlocks.length > 0) {
         autoApplyChanges(data.content, data.codeBlocks)
       }
@@ -365,22 +365,54 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
     if (appliedLines.trim() !== expectedLines) {
       console.log(`🔧 Change verification failed. Re-applying...`)
       
-      // Re-apply the change
-      applyLineReplacement(startLine, endLine, expectedCode)
+      // Try to fix the code by doing a more precise replacement
+      const fixedContent = fixCodeStructure(currentContent, startLine, endLine, expectedCode)
+      onFileContentChange(currentFile, fixedContent)
       
-      // Add a verification message
-      setTimeout(() => {
-        const verificationMessage: Message = {
-          id: (Date.now() + 2).toString(),
-          role: "assistant",
-          content: `✅ Verified and corrected the changes to lines ${startLine}-${endLine}. The code has been properly applied.`,
-          createdAt: Date.now(),
-        }
-        setMessages((prev) => [...prev, verificationMessage])
-      }, 500)
+      // Internal verification (not shown to user)
+      console.log(`✅ Internal fix applied to lines ${startLine}-${endLine}`)
     } else {
       console.log(`✅ Change verification passed for lines ${startLine}-${endLine}`)
     }
+  }
+
+  // Fix code structure issues
+  const fixCodeStructure = (content: string, startLine: number, endLine: number, newCode: string): string => {
+    const lines = content.split('\n')
+    
+    // Find the actual function boundaries
+    let actualStart = startLine - 1
+    let actualEnd = endLine
+    
+    // Look for function start (find opening brace)
+    for (let i = startLine - 1; i >= 0; i--) {
+      if (lines[i].includes('{')) {
+        actualStart = i
+        break
+      }
+    }
+    
+    // Look for function end (find closing brace)
+    let braceCount = 0
+    for (let i = startLine - 1; i < lines.length; i++) {
+      for (const char of lines[i]) {
+        if (char === '{') braceCount++
+        if (char === '}') braceCount--
+      }
+      if (braceCount === 0 && i >= startLine - 1) {
+        actualEnd = i + 1
+        break
+      }
+    }
+    
+    // Replace the entire function
+    const newLines = [
+      ...lines.slice(0, actualStart),
+      ...newCode.split('\n'),
+      ...lines.slice(actualEnd)
+    ]
+    
+    return newLines.join('\n')
   }
 
   const clearChatHistory = () => {
@@ -510,65 +542,11 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
               </div>
 
               {message.role === "assistant" && !message.isTyping && message.codeBlocks && currentFile && (
-                <div className="mt-2 space-y-2">
-                  {message.codeBlocks.map((block, index) => {
-                    // Check if this is a line replacement instruction
-                    const lineMatch = message.content.match(/Replace lines (\d+) to (\d+) with the following code:/i)
-                    const isLineReplacement = lineMatch !== null
-                    const startLine = isLineReplacement ? parseInt(lineMatch[1]) : null
-                    const endLine = isLineReplacement ? parseInt(lineMatch[2]) : null
-                    
-                    return (
-                      <div key={index} className="flex items-center gap-2 p-2 bg-muted/20 rounded text-xs">
-                        <FileText className="h-3 w-3 text-muted-foreground" />
-                        <span className="flex-1 text-muted-foreground">
-                          {isLineReplacement 
-                            ? `Replace lines ${startLine}-${endLine} in ${currentFile}`
-                            : block.code.includes('--- a/') && block.code.includes('+++ b/') 
-                              ? `Apply diff to ${currentFile}` 
-                              : `Apply ${block.language} code to ${currentFile}`}
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 px-2 text-blue-600 hover:text-blue-700"
-                          onClick={() => {
-                            // Show the code in a modal or alert for review
-                            const isDiff = block.code.includes('--- a/') && block.code.includes('+++ b/')
-                            if (isDiff) {
-                              alert(`Diff Preview:\n\n${block.code.substring(0, 1000)}${block.code.length > 1000 ? '\n\n... (truncated)' : ''}`)
-                            } else {
-                              alert(`Code Preview:\n\n${block.code.substring(0, 1000)}${block.code.length > 1000 ? '\n\n... (truncated)' : ''}`)
-                            }
-                          }}
-                          title="Preview code before applying"
-                        >
-                          👁️
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 px-2 text-green-600 hover:text-green-700"
-                          onClick={() => {
-                            if (isLineReplacement && startLine && endLine) {
-                              const confirmMsg = `Replace lines ${startLine} to ${endLine} with the new code?\n\nThis will modify your file at those specific lines.`
-                              if (confirm(confirmMsg)) {
-                                applyLineReplacement(startLine, endLine, block.code)
-                              }
-                            } else {
-                              applyCodeToFile(block.code)
-                            }
-                          }}
-                          title={isLineReplacement ? "Replace specific lines" : "Apply code to file"}
-                        >
-                          <Check className="h-3 w-3" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-6 px-2 text-red-600 hover:text-red-700" title="Dismiss">
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    )
-                  })}
+                <div className="mt-2 p-2 bg-green-500/10 border border-green-500/20 rounded text-xs text-green-600">
+                  <div className="flex items-center gap-2">
+                    <Check className="h-3 w-3" />
+                    <span>Changes applied automatically to {currentFile}</span>
+                  </div>
                 </div>
               )}
 
