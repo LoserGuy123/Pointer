@@ -87,7 +87,7 @@ export default function PointerIDE() {
                 {
                   description: "Text files",
                   accept: {
-                    "text/plain": [".txt", ".js", ".jsx", ".ts", ".tsx", ".py", ".css", ".html", ".json", ".md"],
+                    "text/plain": [".txt", ".js", ".jsx", ".ts", ".tsx", ".py", ".css", ".html", ".htm", ".xml", ".json", ".yaml", ".yml", ".md", ".sql", ".php", ".java", ".cpp", ".cxx", ".cc", ".c", ".h", ".hpp", ".cs", ".vb", ".fs", ".lua", ".rb", ".pl", ".sh", ".bash", ".zsh", ".fish", ".ps1", ".go", ".rs", ".swift", ".kt", ".scala", ".clj", ".hs", ".ml", ".r", ".m", ".mm", ".dart", ".elm", ".ex", ".exs", ".erl", ".hrl", ".nim", ".zig", ".v", ".jl", ".cr", ".pas", ".pp", ".ada", ".ads", ".adb", ".ini", ".cfg", ".conf", ".toml", ".env", ".dockerfile", ".makefile", ".cmake", ".gradle", ".pom"],
                   },
                 },
               ],
@@ -125,7 +125,7 @@ export default function PointerIDE() {
     const input = document.createElement("input")
     input.type = "file"
     input.multiple = true
-    input.accept = ".js,.jsx,.ts,.tsx,.py,.css,.html,.json,.md,.txt,.sql,.php,.java,.cpp,.c,.go,.rs,.rb"
+    input.accept = ".js,.jsx,.ts,.tsx,.py,.css,.html,.htm,.xml,.json,.yaml,.yml,.md,.txt,.sql,.php,.java,.cpp,.cxx,.cc,.c,.h,.hpp,.cs,.vb,.fs,.lua,.rb,.pl,.sh,.bash,.zsh,.fish,.ps1,.go,.rs,.swift,.kt,.scala,.clj,.hs,.ml,.r,.m,.mm,.dart,.elm,.ex,.exs,.erl,.hrl,.nim,.zig,.v,.jl,.cr,.pas,.pp,.ada,.ads,.adb,.ini,.cfg,.conf,.toml,.env,.dockerfile,.makefile,.cmake,.gradle,.pom"
     input.onchange = (e) => {
       const files = (e.target as HTMLInputElement).files
       if (!files) return

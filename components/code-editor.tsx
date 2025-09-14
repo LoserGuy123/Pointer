@@ -10,6 +10,41 @@ interface CodeEditorProps {
   onContentChange?: (content: string) => void
 }
 
+// Function to detect language from file content
+const detectLanguageFromContent = (content: string): string | null => {
+  const contentLower = content.toLowerCase()
+  
+  // Language-specific patterns
+  const patterns = [
+    { pattern: /function\s+\w+\s*\(|local\s+\w+\s*=|end\s*$/, language: "Lua" },
+    { pattern: /using\s+System|namespace\s+\w+|public\s+class/, language: "C#" },
+    { pattern: /#!/bin/(bash|sh|zsh|fish)|echo\s+["']/, language: "Shell Script" },
+    { pattern: /def\s+\w+\s*\(|import\s+\w+|print\s*\(/, language: "Python" },
+    { pattern: /function\s+\w+\s*\(|const\s+\w+\s*=|let\s+\w+\s*=/, language: "JavaScript" },
+    { pattern: /interface\s+\w+|type\s+\w+\s*=|:\s*\w+\[\]/, language: "TypeScript" },
+    { pattern: /public\s+class\s+\w+|import\s+java\./, language: "Java" },
+    { pattern: /#include\s*<|int\s+main\s*\(|std::/, language: "C++" },
+    { pattern: /#include\s*<|int\s+main\s*\(|printf\s*\(/, language: "C" },
+    { pattern: /fn\s+\w+\s*\(|let\s+mut\s+\w+|use\s+std::/, language: "Rust" },
+    { pattern: /package\s+main|func\s+\w+\s*\(|import\s+"fmt"/, language: "Go" },
+    { pattern: /<?php|echo\s+["']|function\s+\w+\s*\(/, language: "PHP" },
+    { pattern: /def\s+\w+\s*\(|puts\s+["']|require\s+["']/, language: "Ruby" },
+    { pattern: /SELECT\s+\w+|FROM\s+\w+|WHERE\s+\w+/, language: "SQL" },
+    { pattern: /<!DOCTYPE\s+html|<html|<head>/, language: "HTML" },
+    { pattern: /\.\w+\s*\{|@media|@import/, language: "CSS" },
+    { pattern: /{\s*"|"name":\s*"|"version":\s*"/, language: "JSON" },
+    { pattern: /#\s+\w+|##\s+\w+|###\s+\w+/, language: "Markdown" },
+  ]
+  
+  for (const { pattern, language } of patterns) {
+    if (pattern.test(content)) {
+      return language
+    }
+  }
+  
+  return null
+}
+
 export function CodeEditor({ file, content, onContentChange }: CodeEditorProps) {
   const [code, setCode] = useState(content)
   const [language, setLanguage] = useState("javascript")
@@ -19,26 +54,128 @@ export function CodeEditor({ file, content, onContentChange }: CodeEditorProps) 
   useEffect(() => {
     const extension = file.split(".").pop()?.toLowerCase()
     const languageMap: Record<string, string> = {
+      // Web Technologies
       js: "javascript",
       jsx: "javascript",
       ts: "typescript",
       tsx: "typescript",
-      py: "python",
       css: "css",
       html: "html",
+      htm: "html",
+      xml: "xml",
       json: "json",
-      md: "markdown",
-      sql: "sql",
-      php: "php",
+      yaml: "yaml",
+      yml: "yaml",
+      
+      // Programming Languages
+      py: "python",
       java: "java",
       cpp: "cpp",
+      cxx: "cpp",
+      cc: "cpp",
       c: "c",
+      h: "c",
+      hpp: "cpp",
+      cs: "csharp",
+      vb: "vb",
+      fs: "fsharp",
+      
+      // Scripting Languages
+      lua: "lua",
+      rb: "ruby",
+      php: "php",
+      pl: "perl",
+      sh: "shell",
+      bash: "shell",
+      zsh: "shell",
+      fish: "shell",
+      ps1: "powershell",
+      
+      // Systems Languages
       go: "go",
       rs: "rust",
-      rb: "ruby",
+      swift: "swift",
+      kt: "kotlin",
+      scala: "scala",
+      clj: "clojure",
+      hs: "haskell",
+      ml: "ocaml",
+      
+      // Database
+      sql: "sql",
+      mysql: "sql",
+      pgsql: "sql",
+      
+      // Configuration & Data
+      md: "markdown",
+      txt: "plaintext",
+      ini: "ini",
+      cfg: "ini",
+      conf: "ini",
+      toml: "toml",
+      env: "properties",
+      
+      // Build & Package
+      dockerfile: "dockerfile",
+      makefile: "makefile",
+      cmake: "cmake",
+      gradle: "groovy",
+      pom: "xml",
+      
+      // Other
+      r: "r",
+      m: "objective-c",
+      mm: "objective-cpp",
+      dart: "dart",
+      elm: "elm",
+      ex: "elixir",
+      exs: "elixir",
+      erl: "erlang",
+      hrl: "erlang",
+      nim: "nim",
+      zig: "zig",
+      v: "v",
+      jl: "julia",
+      cr: "crystal",
+      pas: "pascal",
+      pp: "pascal",
+      ada: "ada",
+      ads: "ada",
+      adb: "ada",
     }
-    setLanguage(languageMap[extension || ""] || "javascript")
-  }, [file])
+    let detectedLanguage = languageMap[extension || ""] || "javascript"
+    
+    // If extension not recognized, try to detect from content
+    if (detectedLanguage === "javascript" && content.trim()) {
+      const contentDetected = detectLanguageFromContent(content)
+      if (contentDetected) {
+        // Convert display name to Monaco language ID
+        const monacoLanguageMap: Record<string, string> = {
+          "Lua": "lua",
+          "C#": "csharp",
+          "Shell Script": "shell",
+          "Python": "python",
+          "JavaScript": "javascript",
+          "TypeScript": "typescript",
+          "Java": "java",
+          "C++": "cpp",
+          "C": "c",
+          "Rust": "rust",
+          "Go": "go",
+          "PHP": "php",
+          "Ruby": "ruby",
+          "SQL": "sql",
+          "HTML": "html",
+          "CSS": "css",
+          "JSON": "json",
+          "Markdown": "markdown",
+        }
+        detectedLanguage = monacoLanguageMap[contentDetected] || "javascript"
+      }
+    }
+    
+    setLanguage(detectedLanguage)
+  }, [file, content])
 
   useEffect(() => {
     setCode(content)

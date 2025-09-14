@@ -7,6 +7,41 @@ interface StatusBarProps {
   fileContents?: Record<string, string>
 }
 
+// Function to detect language from file content
+const detectLanguageFromContent = (content: string): string | null => {
+  const contentLower = content.toLowerCase()
+  
+  // Language-specific patterns
+  const patterns = [
+    { pattern: /function\s+\w+\s*\(|local\s+\w+\s*=|end\s*$/, language: "Lua" },
+    { pattern: /using\s+System|namespace\s+\w+|public\s+class/, language: "C#" },
+    { pattern: /#!/bin/(bash|sh|zsh|fish)|echo\s+["']/, language: "Shell Script" },
+    { pattern: /def\s+\w+\s*\(|import\s+\w+|print\s*\(/, language: "Python" },
+    { pattern: /function\s+\w+\s*\(|const\s+\w+\s*=|let\s+\w+\s*=/, language: "JavaScript" },
+    { pattern: /interface\s+\w+|type\s+\w+\s*=|:\s*\w+\[\]/, language: "TypeScript" },
+    { pattern: /public\s+class\s+\w+|import\s+java\./, language: "Java" },
+    { pattern: /#include\s*<|int\s+main\s*\(|std::/, language: "C++" },
+    { pattern: /#include\s*<|int\s+main\s*\(|printf\s*\(/, language: "C" },
+    { pattern: /fn\s+\w+\s*\(|let\s+mut\s+\w+|use\s+std::/, language: "Rust" },
+    { pattern: /package\s+main|func\s+\w+\s*\(|import\s+"fmt"/, language: "Go" },
+    { pattern: /<?php|echo\s+["']|function\s+\w+\s*\(/, language: "PHP" },
+    { pattern: /def\s+\w+\s*\(|puts\s+["']|require\s+["']/, language: "Ruby" },
+    { pattern: /SELECT\s+\w+|FROM\s+\w+|WHERE\s+\w+/, language: "SQL" },
+    { pattern: /<!DOCTYPE\s+html|<html|<head>/, language: "HTML" },
+    { pattern: /\.\w+\s*\{|@media|@import/, language: "CSS" },
+    { pattern: /{\s*"|"name":\s*"|"version":\s*"/, language: "JSON" },
+    { pattern: /#\s+\w+|##\s+\w+|###\s+\w+/, language: "Markdown" },
+  ]
+  
+  for (const { pattern, language } of patterns) {
+    if (pattern.test(content)) {
+      return language
+    }
+  }
+  
+  return null
+}
+
 export function StatusBar({ currentFile, fileContents }: StatusBarProps) {
   const getFileStats = () => {
     if (!currentFile || !fileContents?.[currentFile]) {
@@ -24,26 +59,106 @@ export function StatusBar({ currentFile, fileContents }: StatusBarProps) {
 
     const extension = currentFile.split(".").pop()?.toLowerCase()
     const languageMap: Record<string, string> = {
+      // Web Technologies
       js: "JavaScript",
       jsx: "JavaScript React",
       ts: "TypeScript",
       tsx: "TypeScript React",
-      py: "Python",
       css: "CSS",
       html: "HTML",
+      htm: "HTML",
+      xml: "XML",
       json: "JSON",
-      md: "Markdown",
-      sql: "SQL",
-      php: "PHP",
+      yaml: "YAML",
+      yml: "YAML",
+      
+      // Programming Languages
+      py: "Python",
       java: "Java",
       cpp: "C++",
+      cxx: "C++",
+      cc: "C++",
       c: "C",
+      h: "C/C++ Header",
+      hpp: "C++ Header",
+      cs: "C#",
+      vb: "Visual Basic",
+      fs: "F#",
+      
+      // Scripting Languages
+      lua: "Lua",
+      rb: "Ruby",
+      php: "PHP",
+      pl: "Perl",
+      sh: "Shell Script",
+      bash: "Bash",
+      zsh: "Zsh",
+      fish: "Fish",
+      ps1: "PowerShell",
+      
+      // Systems Languages
       go: "Go",
       rs: "Rust",
-      rb: "Ruby",
+      swift: "Swift",
+      kt: "Kotlin",
+      scala: "Scala",
+      clj: "Clojure",
+      hs: "Haskell",
+      ml: "OCaml",
+      fs: "F#",
+      
+      // Database
+      sql: "SQL",
+      mysql: "MySQL",
+      pgsql: "PostgreSQL",
+      
+      // Configuration & Data
+      md: "Markdown",
+      txt: "Plain Text",
+      ini: "INI",
+      cfg: "Configuration",
+      conf: "Configuration",
+      toml: "TOML",
+      env: "Environment",
+      
+      // Build & Package
+      dockerfile: "Dockerfile",
+      makefile: "Makefile",
+      cmake: "CMake",
+      gradle: "Gradle",
+      pom: "Maven",
+      
+      // Other
+      r: "R",
+      m: "Objective-C",
+      mm: "Objective-C++",
+      dart: "Dart",
+      elm: "Elm",
+      ex: "Elixir",
+      exs: "Elixir",
+      erl: "Erlang",
+      hrl: "Erlang",
+      nim: "Nim",
+      zig: "Zig",
+      v: "V",
+      jl: "Julia",
+      cr: "Crystal",
+      pas: "Pascal",
+      pp: "Pascal",
+      ada: "Ada",
+      ads: "Ada",
+      adb: "Ada",
     }
 
-    const language = languageMap[extension || ""] || "Plain Text"
+    let language = languageMap[extension || ""] || "Plain Text"
+    
+    // If extension not recognized, try to detect from content
+    if (language === "Plain Text" && content.trim()) {
+      const detectedLanguage = detectLanguageFromContent(content)
+      if (detectedLanguage) {
+        language = detectedLanguage
+      }
+    }
 
     return {
       lines,
