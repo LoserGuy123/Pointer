@@ -330,7 +330,11 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
       ]
       
       console.log(`✅ Replacing ${endLine - startLine + 1} lines with ${newCode.split('\n').length} lines`)
-      onFileContentChange(currentFile, newLines.join('\n'))
+      const updatedContent = newLines.join('\n')
+      onFileContentChange(currentFile, updatedContent)
+      
+      // Auto-save the file
+      autoSaveFile(currentFile, updatedContent)
     }
   }
 
@@ -376,6 +380,9 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
           // Replace the entire file content with the new code
           onFileContentChange(currentFile, newCode)
           console.log('✅ Code applied directly to file')
+          
+          // Auto-save the file
+          autoSaveFile(currentFile, newCode)
         }, 1000)
       }
     }
@@ -442,6 +449,43 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
     ]
     
     return newLines.join('\n')
+  }
+
+  const autoSaveFile = async (fileName: string, content: string) => {
+    try {
+      if ("showSaveFilePicker" in window) {
+        // Use File System Access API if available
+        const fileHandle = await (window as any).showSaveFilePicker({
+          suggestedName: fileName,
+          types: [
+            {
+              description: "Text files",
+              accept: {
+                "text/plain": [".txt", ".js", ".jsx", ".ts", ".tsx", ".py", ".css", ".html", ".json", ".md", ".cpp", ".c", ".h"],
+              },
+            },
+          ],
+        })
+        const writable = await fileHandle.createWritable()
+        await writable.write(content)
+        await writable.close()
+        console.log(`💾 Auto-saved ${fileName}`)
+      } else {
+        // Fallback: download the file
+        const blob = new Blob([content], { type: "text/plain" })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = fileName
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+        console.log(`💾 Auto-saved ${fileName} (downloaded)`)
+      }
+    } catch (error) {
+      console.log('Auto-save cancelled or failed:', error)
+    }
   }
 
   const clearChatHistory = () => {

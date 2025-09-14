@@ -41,40 +41,40 @@
   --font-jetbrains-mono: "JetBrains Mono", monospace;
 }
 
-/* Updated dark theme with modern Pointer IDE design tokens */
+/* Minimalistic dark grey theme */
 .dark {
-  --background: oklch(0.08 0.01 240); /* Deep dark background */
-  --foreground: oklch(0.95 0 0); /* Bright white text */
-  --card: oklch(0.12 0.01 240 / 0.95); /* Enhanced glassmorphism card */
-  --card-foreground: oklch(0.95 0 0);
-  --popover: oklch(0.14 0.01 240 / 0.98); /* Crisp popover */
-  --popover-foreground: oklch(0.95 0 0);
-  --primary: oklch(0.6 0.25 200); /* Vibrant blue primary */
-  --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.7 0.2 280); /* Purple secondary */
-  --secondary-foreground: oklch(0.08 0.01 240);
-  --muted: oklch(0.18 0.01 240); /* Rich muted background */
-  --muted-foreground: oklch(0.65 0 0);
-  --accent: oklch(0.7 0.2 280); /* Purple accent for highlights */
-  --accent-foreground: oklch(0.08 0.01 240);
-  --destructive: oklch(0.6 0.25 20); /* Red destructive */
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.25 0.01 240 / 0.4); /* Enhanced borders */
-  --input: oklch(0.15 0.01 240);
-  --ring: oklch(0.6 0.25 200 / 0.6); /* Blue focus ring */
-  --chart-1: oklch(0.6 0.25 200);
-  --chart-2: oklch(0.7 0.2 280);
-  --chart-3: oklch(0.5 0.2 120);
-  --chart-4: oklch(0.65 0.2 320);
-  --chart-5: oklch(0.75 0.15 180);
-  --sidebar: oklch(0.12 0.01 240 / 0.95); /* Enhanced glassmorphism sidebar */
-  --sidebar-foreground: oklch(0.95 0 0);
-  --sidebar-primary: oklch(0.6 0.25 200);
-  --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.7 0.2 280);
-  --sidebar-accent-foreground: oklch(0.08 0.01 240);
-  --sidebar-border: oklch(0.25 0.01 240 / 0.4);
-  --sidebar-ring: oklch(0.6 0.25 200 / 0.6);
+  --background: oklch(0.1 0 0); /* Very dark grey background */
+  --foreground: oklch(0.9 0 0); /* Light grey text */
+  --card: oklch(0.15 0 0 / 0.95); /* Slightly lighter grey card */
+  --card-foreground: oklch(0.9 0 0);
+  --popover: oklch(0.18 0 0 / 0.98); /* Medium grey popover */
+  --popover-foreground: oklch(0.9 0 0);
+  --primary: oklch(0.6 0 0); /* Medium grey primary */
+  --primary-foreground: oklch(0.1 0 0);
+  --secondary: oklch(0.25 0 0); /* Dark grey secondary */
+  --secondary-foreground: oklch(0.9 0 0);
+  --muted: oklch(0.2 0 0); /* Muted grey background */
+  --muted-foreground: oklch(0.6 0 0);
+  --accent: oklch(0.3 0 0); /* Slightly lighter grey accent */
+  --accent-foreground: oklch(0.9 0 0);
+  --destructive: oklch(0.5 0 0); /* Dark grey destructive */
+  --destructive-foreground: oklch(0.9 0 0);
+  --border: oklch(0.25 0 0 / 0.5); /* Grey borders */
+  --input: oklch(0.18 0 0);
+  --ring: oklch(0.4 0 0 / 0.5); /* Grey focus ring */
+  --chart-1: oklch(0.6 0 0);
+  --chart-2: oklch(0.5 0 0);
+  --chart-3: oklch(0.4 0 0);
+  --chart-4: oklch(0.3 0 0);
+  --chart-5: oklch(0.2 0 0);
+  --sidebar: oklch(0.12 0 0 / 0.95); /* Dark grey sidebar */
+  --sidebar-foreground: oklch(0.9 0 0);
+  --sidebar-primary: oklch(0.6 0 0);
+  --sidebar-primary-foreground: oklch(0.1 0 0);
+  --sidebar-accent: oklch(0.3 0 0);
+  --sidebar-accent-foreground: oklch(0.9 0 0);
+  --sidebar-border: oklch(0.25 0 0 / 0.5);
+  --sidebar-ring: oklch(0.4 0 0 / 0.5);
 }
 
 @theme inline {
@@ -130,19 +130,19 @@
 /* Enhanced glassmorphism and modern animation utilities for Pointer IDE */
 @layer utilities {
   .glass {
-    backdrop-filter: blur(16px) saturate(180%);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    backdrop-filter: blur(12px) saturate(100%);
+    -webkit-backdrop-filter: blur(12px) saturate(100%);
+    background: rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.2);
   }
 
   .glass-strong {
-    backdrop-filter: blur(20px) saturate(200%);
-    -webkit-backdrop-filter: blur(20px) saturate(200%);
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.5);
+    backdrop-filter: blur(16px) saturate(100%);
+    -webkit-backdrop-filter: blur(16px) saturate(100%);
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 6px 20px 0 rgba(0, 0, 0, 0.3);
   }
 
   .smooth-transition {
@@ -185,55 +185,58 @@
     background: transparent;
   }
 
-  /* Enhanced button styles */
+  /* Minimalistic button styles */
   .btn-primary {
-    background: linear-gradient(135deg, oklch(0.6 0.25 200), oklch(0.7 0.2 280));
-    border: none;
-    color: white;
+    background: oklch(0.3 0 0);
+    border: 1px solid oklch(0.4 0 0);
+    color: oklch(0.9 0 0);
     font-weight: 500;
     transition: all 0.15s ease;
   }
 
   .btn-primary:hover {
-    background: linear-gradient(135deg, oklch(0.65 0.25 200), oklch(0.75 0.2 280));
+    background: oklch(0.4 0 0);
+    border-color: oklch(0.5 0 0);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   }
 
-  /* Enhanced card styles */
+  /* Minimalistic card styles */
   .card-modern {
-    background: oklch(0.12 0.01 240 / 0.8);
-    border: 1px solid oklch(0.25 0.01 240 / 0.3);
-    border-radius: 12px;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: oklch(0.15 0 0 / 0.8);
+    border: 1px solid oklch(0.25 0 0 / 0.3);
+    border-radius: 8px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     transition: all 0.15s ease;
   }
 
   .card-modern:hover {
-    border-color: oklch(0.6 0.25 200 / 0.4);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    border-color: oklch(0.35 0 0 / 0.5);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
   }
 
-  /* Clean code block styles */
+  /* Minimalistic code block styles */
   .prose pre {
-    background: oklch(0.15 0.01 240 / 0.9) !important;
-    border: 1px solid oklch(0.25 0.01 240 / 0.4) !important;
-    border-radius: 8px !important;
+    background: oklch(0.15 0 0 / 0.9) !important;
+    border: 1px solid oklch(0.25 0 0 / 0.4) !important;
+    border-radius: 6px !important;
     padding: 12px !important;
     overflow: hidden !important;
     margin: 8px 0 !important;
   }
 
   .prose code {
-    background: oklch(0.15 0.01 240 / 0.6) !important;
+    background: oklch(0.2 0 0 / 0.6) !important;
     padding: 2px 6px !important;
-    border-radius: 4px !important;
+    border-radius: 3px !important;
     font-size: 0.85em !important;
+    color: oklch(0.8 0 0) !important;
   }
 
   .prose pre code {
     background: transparent !important;
     padding: 0 !important;
+    color: oklch(0.9 0 0) !important;
   }
 }
