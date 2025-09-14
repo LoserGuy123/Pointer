@@ -68,7 +68,7 @@ export function MenuBar({ onNewFile, onNewFolder, onSave, onUpload, onDownload }
   }
 
   const showAbout = () => {
-    alert(`Pointer IDE v1.0.0
+    console.log(`Pointer IDE v1.0.0
 
 AI-powered development environment built with Next.js and React.
 
@@ -84,7 +84,7 @@ Built with ❤️ by the Pointer team`)
 
   const showKeyboardShortcuts = () => {
     setShowShortcuts(true)
-    alert(`Keyboard Shortcuts:
+    console.log(`Keyboard Shortcuts:
 
 File Operations:
 • Ctrl+N - New File
@@ -151,7 +151,7 @@ Navigation:
   }
 
   const showPreferences = () => {
-    alert(`Preferences
+    console.log(`Preferences
 
 Theme: Dark Mode (Default)
 Font Size: 14px

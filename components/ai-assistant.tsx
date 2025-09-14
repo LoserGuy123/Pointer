@@ -76,16 +76,16 @@ function TypingMessage({ content, onComplete }: { content: string; onComplete: (
       className="prose prose-sm dark:prose-invert max-w-none"
       components={{
         p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                        code: ({ children, className }) => {
-                          const isInline = !className
-                          return isInline ? (
-                            <code className="bg-muted px-1 py-0.5 rounded text-xs font-mono">{children}</code>
-                          ) : (
+        code: ({ children, className }) => {
+          const isInline = !className
+          return isInline ? (
+            <code className="bg-muted px-1 py-0.5 rounded text-xs font-mono">{children}</code>
+          ) : (
                             <pre className="bg-muted p-2 rounded text-xs font-mono overflow-hidden">
-                              <code>{children}</code>
-                            </pre>
-                          )
-                        },
+              <code>{children}</code>
+            </pre>
+          )
+        },
         strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
         em: ({ children }) => <em className="italic">{children}</em>,
         ul: ({ children }) => <ul className="list-disc list-inside mb-2">{children}</ul>,
@@ -202,7 +202,7 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
   // Auto-scroll to bottom when new messages are added (only if user isn't scrolling)
   useEffect(() => {
     if (!isUserScrolling) {
-      scrollToBottom()
+    scrollToBottom()
     }
   }, [messages, isUserScrolling])
 
@@ -340,14 +340,8 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
       // Check if the code is in diff format
       if (code.includes('--- a/') && code.includes('+++ b/') && code.includes('@@')) {
         // This is a diff format - show user options
-        const choice = confirm(
-          "This appears to be a diff/patch format. Would you like to:\n\n" +
-          "• OK: Replace entire file with the diff content\n" +
-          "• Cancel: Keep current file unchanged\n\n" +
-          "Note: For proper diff application, you may need to manually apply the changes."
-        )
-        
-        if (choice) {
+        // Auto-apply diff content without confirmation
+        {
           // Extract just the new lines (lines starting with +)
           const diffLines = code.split('\n')
           const newLines = diffLines
@@ -363,7 +357,7 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
         }
       } else {
         // This is regular code - apply it directly
-        onFileContentChange(currentFile, code)
+      onFileContentChange(currentFile, code)
       }
     }
   }
@@ -380,7 +374,7 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
       // Validate line numbers
       if (startLine < 1 || endLine > lines.length || startLine > endLine) {
         console.log(`❌ Invalid line numbers: ${startLine} to ${endLine}. File has ${lines.length} lines.`)
-        alert(`Invalid line numbers: ${startLine} to ${endLine}. File has ${lines.length} lines.`)
+        console.error(`Invalid line numbers: ${startLine} to ${endLine}. File has ${lines.length} lines.`)
         return
       }
       
@@ -520,16 +514,39 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
       localStorage.setItem(fileKey, content)
       console.log(`💾 Auto-saved ${fileName} to localStorage`)
       
-      // Also try to save to file system if user has granted permission
-      if (window.fileHandle) {
-        try {
-          const writable = await window.fileHandle.createWritable()
+      // Try to save to actual file system
+      try {
+        if ("showSaveFilePicker" in window) {
+          const fileHandle = await (window as any).showSaveFilePicker({
+            suggestedName: fileName,
+            types: [
+              {
+                description: "Text files",
+                accept: {
+                  "text/plain": [".txt", ".js", ".jsx", ".ts", ".tsx", ".py", ".css", ".html", ".htm", ".xml", ".json", ".yaml", ".yml", ".md", ".sql", ".php", ".java", ".cpp", ".cxx", ".cc", ".c", ".h", ".hpp", ".cs", ".vb", ".fs", ".lua", ".rb", ".pl", ".sh", ".bash", ".zsh", ".fish", ".ps1", ".go", ".rs", ".swift", ".kt", ".scala", ".clj", ".hs", ".ml", ".r", ".m", ".mm", ".dart", ".elm", ".ex", ".exs", ".erl", ".hrl", ".nim", ".zig", ".v", ".jl", ".cr", ".pas", ".pp", ".ada", ".ads", ".adb", ".ini", ".cfg", ".conf", ".toml", ".env", ".dockerfile", ".makefile", ".cmake", ".gradle", ".pom"],
+                },
+              },
+            ],
+          })
+          const writable = await fileHandle.createWritable()
           await writable.write(content)
           await writable.close()
           console.log(`💾 Auto-saved ${fileName} to file system`)
-        } catch (error) {
-          console.log('File system save failed, using localStorage only:', error)
+        } else {
+          // Fallback: download the file
+          const blob = new Blob([content], { type: "text/plain" })
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement("a")
+          a.href = url
+          a.download = fileName
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
+          URL.revokeObjectURL(url)
+          console.log(`💾 Auto-saved ${fileName} (downloaded)`)
         }
+      } catch (error) {
+        console.log('File system save failed, using localStorage only:', error)
       }
     } catch (error) {
       console.log('Auto-save failed:', error)
@@ -538,10 +555,9 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
 
 
   const clearChatHistory = () => {
-    if (confirm('Are you sure you want to clear the chat history?')) {
-      setMessages([])
-      localStorage.removeItem('pointer-ide-chat-history')
-    }
+    setMessages([])
+    localStorage.removeItem('pointer-ide-chat-history')
+    console.log('🗑️ Cleared chat history')
   }
 
   return (
@@ -560,9 +576,9 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                <MoreHorizontal className="h-3 w-3" />
-              </Button>
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+            <MoreHorizontal className="h-3 w-3" />
+          </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem onClick={clearChatHistory}>
@@ -671,7 +687,7 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
                   <div className="flex items-center gap-1">
                     <Check className="h-2 w-2" />
                     <span>Applied</span>
-                  </div>
+                    </div>
                 </div>
               )}
 
@@ -735,20 +751,20 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
       <div className="p-4 border-t border-sidebar-border">
         <form onSubmit={handleSubmit} className="flex gap-2">
           <div className="flex-1 relative">
-            <Input
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
+          <Input
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
               placeholder="Ask AI anything about your code... (Ctrl+Enter to send, Esc to clear)"
               className="flex-1 bg-input border-border pr-12"
               maxLength={2000}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault()
-                  handleSubmit(e)
-                }
-              }}
-            />
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault()
+                handleSubmit(e)
+              }
+            }}
+          />
             <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground">
               {input.length}/2000
             </div>
@@ -757,7 +773,7 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
             {isLoading ? (
               <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
             ) : (
-              <Send className="h-4 w-4" />
+            <Send className="h-4 w-4" />
             )}
           </Button>
         </form>

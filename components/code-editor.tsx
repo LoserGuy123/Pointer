@@ -278,13 +278,13 @@ export function CodeEditor({ file, content, onContentChange }: CodeEditorProps) 
       try {
         const result = eval(code)
         console.log("[v0] Execution result:", result)
-        alert(`Code executed successfully! Check console for output.`)
+        console.log(`Code executed successfully! Check console for output.`)
       } catch (error) {
         console.error("[v0] Execution error:", error)
-        alert(`Error: ${error}`)
+        console.error(`Error: ${error}`)
       }
     } else {
-      alert(`Code execution for ${language} is not supported in the browser. Use the terminal instead.`)
+      console.log(`Code execution for ${language} is not supported in the browser. Use the terminal instead.`)
     }
   }
 

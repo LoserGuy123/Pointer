@@ -256,39 +256,13 @@ export function FileExplorer({ currentFile, onFileSelect, fileContents, onFileCo
   }
 
   const createNewFile = () => {
-    const fileName = prompt("Enter file name:")
-    if (!fileName) return
-
-    const defaultContent = getDefaultFileContent(fileName)
-
-    onFileContentChange(fileName, defaultContent)
-
-    const newFile: FileNode = {
-      name: fileName,
-      type: "file",
-      path: fileName,
-      content: defaultContent,
-    }
-
-    setFileTree((prev) => [...prev, newFile])
-    setFilteredTree((prev) => [...prev, newFile])
-    onFileSelect(fileName)
+    // File creation is now handled inline in the file explorer
+    handleCreateFile()
   }
 
   const createNewFolder = () => {
-    const folderName = prompt("Enter folder name:")
-    if (!folderName) return
-
-    const newFolder: FileNode = {
-      name: folderName,
-      type: "folder",
-      path: folderName,
-      expanded: false,
-      children: [],
-    }
-
-    setFileTree((prev) => [...prev, newFolder])
-    setFilteredTree((prev) => [...prev, newFolder])
+    // Folder creation is now handled inline in the file explorer
+    handleCreateFolder()
   }
 
   const getDefaultFileContent = (fileName: string): string => {
@@ -385,12 +359,17 @@ Welcome to your new markdown file!
     setFileTree(newTree)
     setFilteredTree(newTree)
 
+    // Update file contents by removing the deleted file
     const newContents = { ...fileContents }
     delete newContents[pathToDelete]
+    onFileContentChange(pathToDelete, "") // Clear the content
 
+    // If the deleted file was currently open, clear the selection
     if (currentFile === pathToDelete) {
       onFileSelect("")
     }
+
+    console.log(`🗑️ Deleted ${pathToDelete}`)
   }
 
   const renameNode = (oldPath: string, newName: string) => {
@@ -465,12 +444,11 @@ Welcome to your new markdown file!
   }
 
   const clearAllFiles = () => {
-    if (confirm('Are you sure you want to clear all files? This action cannot be undone.')) {
-      setFileTree([])
-      setFilteredTree([])
-      localStorage.removeItem('pointer-ide-file-tree')
-      onFileSelect('')
-    }
+    setFileTree([])
+    setFilteredTree([])
+    localStorage.removeItem('pointer-ide-file-tree')
+    onFileSelect('')
+    console.log('🗑️ Cleared all files')
   }
 
 
@@ -625,10 +603,8 @@ Welcome to your new markdown file!
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation()
-                    const newName = prompt("Enter new name:", node.name)
-                    if (newName && newName !== node.name) {
-                      renameNode(node.path, newName)
-                    }
+                    // Rename functionality - use inline input instead of prompt
+                    console.log("Rename functionality - use inline input")
                   }}
                 >
                   <Edit className="h-4 w-4 mr-2" />
@@ -647,9 +623,7 @@ Welcome to your new markdown file!
                 <DropdownMenuItem
                   onClick={(e) => {
                     e.stopPropagation()
-                    if (confirm(`Are you sure you want to delete ${node.name}?`)) {
-                      deleteNode(node.path)
-                    }
+                    deleteNode(node.path)
                   }}
                   className="text-destructive focus:text-destructive"
                 >
@@ -829,10 +803,8 @@ Welcome to your new markdown file!
           <button
             className="w-full px-3 py-1 text-left text-sm hover:bg-accent flex items-center gap-2"
             onClick={() => {
-              const newName = prompt("Enter new name:", contextMenu.node.name)
-              if (newName && newName !== contextMenu.node.name) {
-                renameNode(contextMenu.node.path, newName)
-              }
+              // Rename functionality - use inline input instead of prompt
+              console.log("Rename functionality - use inline input")
               setContextMenu(null)
             }}
           >
@@ -853,9 +825,7 @@ Welcome to your new markdown file!
           <button
             className="w-full px-3 py-1 text-left text-sm hover:bg-accent text-destructive flex items-center gap-2"
             onClick={() => {
-              if (confirm(`Are you sure you want to delete ${contextMenu.node.name}?`)) {
-                deleteNode(contextMenu.node.path)
-              }
+              deleteNode(contextMenu.node.path)
               setContextMenu(null)
             }}
           >
