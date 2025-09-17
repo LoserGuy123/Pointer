@@ -1,15 +1,21 @@
 export async function POST(req: Request) {
   try {
-    const { messages, context, provider = 'gemini' } = await req.json()
+    const { messages, context, provider = 'gemini', reasoning = false } = await req.json()
 
     // Check API key based on provider
     const apiKey = provider === 'groq' ? process.env.GROQ_API_KEY : process.env.GEMINI_API_KEY
+    
+    // Debug logging
+    console.log('Provider:', provider)
+    console.log('API Key exists:', !!apiKey)
+    console.log('API Key length:', apiKey ? apiKey.length : 0)
+    
     if (!apiKey) {
       const providerName = provider === 'groq' ? 'Groq' : 'Gemini'
       const envVar = provider === 'groq' ? 'GROQ_API_KEY' : 'GEMINI_API_KEY'
       return new Response(
         JSON.stringify({
-          error: `${providerName} API key not found. Please add ${envVar} to your environment variables in Project Settings.`,
+          error: `${providerName} API key not found. Please add ${envVar} to your environment variables. Create a .env.local file with: ${envVar}=your_api_key_here`,
         }),
         {
           status: 400,
@@ -92,19 +98,32 @@ ${Object.entries(context.allFileContents || {}).map(([file, content]) =>
           ],
           temperature: 0.1,
           max_tokens: 4000,
+          ...(reasoning ? { reasoning_format: 'parsed' } : {}),
         }),
       })
       
       data = await response.json()
       
+      // Debug Groq response
+      console.log('Groq response status:', response.status)
+      console.log('Groq response data:', JSON.stringify(data, null, 2))
+      
+      if (!response.ok) {
+        throw new Error(`Groq API error: ${response.status} - ${data.error?.message || response.statusText}`)
+      }
+      
       // Transform Groq response to match Gemini format
+      const messageContent = data.choices?.[0]?.message?.content || "Sorry, I couldn't generate a response."
+      const reasoningContent = data.choices?.[0]?.message?.reasoning || null
+      
       const transformedData = {
         candidates: [{
           content: {
             parts: [{
-              text: data.choices?.[0]?.message?.content || "Sorry, I couldn't generate a response."
+              text: messageContent
             }]
-          }
+          },
+          reasoning: reasoningContent
         }]
       }
       data = transformedData
@@ -179,6 +198,7 @@ ${Object.entries(context.allFileContents || {}).map(([file, content]) =>
         content,
         originalContent,
         codeBlocks: codeBlocks.length > 0 ? codeBlocks : null,
+        reasoning: data.candidates?.[0]?.reasoning || null,
       }),
       {
         status: 200,

@@ -42,6 +42,7 @@ interface Message {
   createdAt?: number
   isTyping?: boolean
   codeBlocks?: Array<{ language: string; code: string }>
+  reasoning?: string
 }
 
 interface Suggestion {
@@ -151,6 +152,7 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
   const [editNotifications, setEditNotifications] = useState<EditNotification[]>([])
   const [aiStatus, setAiStatus] = useState<string>("")
   const [useGroq, setUseGroq] = useState<boolean>(false)
+  const [useReasoning, setUseReasoning] = useState<boolean>(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -274,6 +276,7 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
         body: JSON.stringify({
           messages: [...messages, userMessage],
           provider: useGroq ? 'groq' : 'gemini',
+          reasoning: useGroq && useReasoning ? true : false,
           context: {
             currentFile,
             fileContent: fileContents[currentFile] || "",
@@ -311,6 +314,7 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
         createdAt: Date.now(),
         isTyping: true,
         codeBlocks: data.codeBlocks || null,
+        reasoning: data.reasoning || null,
       }
 
       setMessages((prev) => [...prev, assistantMessage])
@@ -706,6 +710,29 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
           </div>
         </div>
       </div>
+      
+      {/* Reasoning Toggle - Only visible when Groq is selected */}
+      {useGroq && (
+        <div className="p-3 border-b border-sidebar-border">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Lightbulb className="h-4 w-4 text-muted-foreground" />
+              <Label htmlFor="reasoning-toggle" className="text-xs font-medium">
+                Enable Reasoning
+              </Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="reasoning-toggle"
+                checked={useReasoning}
+                onCheckedChange={setUseReasoning}
+                className="data-[state=checked]:bg-green-500"
+              />
+              <span className="text-xs text-muted-foreground">{useReasoning ? "On" : "Off"}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Quick Suggestions */}
       {messages.length <= 1 && (
@@ -805,6 +832,36 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
                     <Check className="h-2 w-2" />
                     <span>Changes applied to {currentFile}</span>
                     </div>
+                </div>
+              )}
+
+              {/* Reasoning content if available */}
+              {message.role === "assistant" && !message.isTyping && message.reasoning && (
+                <div className="mt-3 p-3 bg-muted/20 rounded-md border border-muted">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Lightbulb className="h-4 w-4 text-yellow-500" />
+                    <span className="text-xs font-medium">AI Reasoning</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    <ReactMarkdown
+                      className="prose prose-sm dark:prose-invert max-w-none"
+                      components={{
+                        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                        code: ({ children, className }) => {
+                          const isInline = !className
+                          return isInline ? (
+                            <code className="bg-muted px-1 py-0.5 rounded text-xs font-mono">{children}</code>
+                          ) : (
+                            <pre className="bg-muted p-2 rounded text-xs font-mono overflow-hidden">
+                              <code>{children}</code>
+                            </pre>
+                          )
+                        },
+                      }}
+                    >
+                      {message.reasoning}
+                    </ReactMarkdown>
+                  </div>
                 </div>
               )}
 
