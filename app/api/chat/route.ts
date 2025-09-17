@@ -80,7 +80,32 @@ ${Object.entries(context.allFileContents || {}).map(([file, content]) =>
     let data: any
 
     if (provider === 'groq') {
-      // Use Groq API
+      // Limit context size for Groq to avoid token limit errors
+      let contextToSend = context ? { 
+        currentFile: context.currentFile,
+        fileContent: context.fileContent,
+        // Only include a subset of files to reduce token count
+        allFiles: context.allFiles?.slice(0, 5),
+        fileTree: context.fileTree
+      } : null;
+      
+      // Simplified system instruction for Groq to reduce tokens
+      let groqSystemInstruction = `You are a fast coding assistant for Pointer IDE. Make direct edits to files.
+When the user asks for changes:
+1. Understand what they want
+2. Apply changes to the complete code
+3. Provide updated code in a code block (auto-applied)
+4. Keep response brief`;
+
+      if (contextToSend) {
+        groqSystemInstruction += `\n\nCurrent File: ${contextToSend.currentFile || "None"}
+Current File Content:
+\`\`\`
+${contextToSend.fileContent || "No content"}
+\`\`\``;
+      }
+      
+      // Use Groq API with reduced context
       response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -90,15 +115,15 @@ ${Object.entries(context.allFileContents || {}).map(([file, content]) =>
         body: JSON.stringify({
           model: 'llama-3.3-70b-versatile',
           messages: [
-            { role: 'system', content: systemInstruction },
-            ...messages.map((msg: any) => ({
+            { role: 'system', content: groqSystemInstruction },
+            // Only include the last 5 messages to reduce token count
+            ...messages.slice(-5).map((msg: any) => ({
               role: msg.role,
               content: msg.content,
             })),
           ],
           temperature: 0.1,
           max_tokens: 4000,
-          ...(reasoning ? { reasoning_format: 'parsed' } : {}),
         }),
       })
       
@@ -123,7 +148,6 @@ ${Object.entries(context.allFileContents || {}).map(([file, content]) =>
       
       // Transform Groq response to match Gemini format
       const messageContent = data.choices?.[0]?.message?.content || "Sorry, I couldn't generate a response."
-      const reasoningContent = data.choices?.[0]?.message?.reasoning || null
       
       const transformedData = {
         candidates: [{
@@ -131,8 +155,7 @@ ${Object.entries(context.allFileContents || {}).map(([file, content]) =>
             parts: [{
               text: messageContent
             }]
-          },
-          reasoning: reasoningContent
+          }
         }]
       }
       data = transformedData
