@@ -226,50 +226,9 @@ export function CodeEditor({ file, content, onContentChange }: CodeEditorProps) 
   }
 
   const handleSave = () => {
-    console.log("[v0] Saving file:", file, "with content:", code)
+    console.log("[v0] Auto-saving file:", file, "with content:", code)
     onContentChange?.(code)
-    if ("showSaveFilePicker" in window) {
-      ;(async () => {
-        try {
-          const fileHandle = await (window as any).showSaveFilePicker({
-            suggestedName: file.split("/").pop() || "file.txt",
-            types: [
-              {
-                description: "Text files",
-                accept: {
-                  "text/plain": [".txt", ".js", ".jsx", ".ts", ".tsx", ".py", ".css", ".html", ".json", ".md"],
-                },
-              },
-            ],
-          })
-          const writable = await fileHandle.createWritable()
-          await writable.write(code)
-          await writable.close()
-        } catch (err) {
-          // Fallback to download if user cancels or API not supported
-          const blob = new Blob([code], { type: "text/plain" })
-          const url = URL.createObjectURL(blob)
-          const a = document.createElement("a")
-          a.href = url
-          a.download = file.split("/").pop() || "file.txt"
-          document.body.appendChild(a)
-          a.click()
-          document.body.removeChild(a)
-          URL.revokeObjectURL(url)
-        }
-      })()
-    } else {
-      // Fallback for browsers without File System Access API
-      const blob = new Blob([code], { type: "text/plain" })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = file.split("/").pop() || "file.txt"
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-    }
+    // Auto-save is now handled automatically - no prompts needed
   }
 
   const handleRun = () => {

@@ -74,48 +74,9 @@ export default function PointerIDE() {
   }
 
   const handleSave = () => {
-    if (currentFile && fileContents[currentFile]) {
-      if ("showSaveFilePicker" in window) {
-        ;(async () => {
-          try {
-            const fileHandle = await (window as any).showSaveFilePicker({
-              suggestedName: currentFile.split("/").pop() || "file.txt",
-              types: [
-                {
-                  description: "Text files",
-                  accept: {
-                    "text/plain": [".txt", ".js", ".jsx", ".ts", ".tsx", ".py", ".css", ".html", ".htm", ".xml", ".json", ".yaml", ".yml", ".md", ".sql", ".php", ".java", ".cpp", ".cxx", ".cc", ".c", ".h", ".hpp", ".cs", ".vb", ".fs", ".lua", ".rb", ".pl", ".sh", ".bash", ".zsh", ".fish", ".ps1", ".go", ".rs", ".swift", ".kt", ".scala", ".clj", ".hs", ".ml", ".r", ".m", ".mm", ".dart", ".elm", ".ex", ".exs", ".erl", ".hrl", ".nim", ".zig", ".v", ".jl", ".cr", ".pas", ".pp", ".ada", ".ads", ".adb", ".ini", ".cfg", ".conf", ".toml", ".env", ".dockerfile", ".makefile", ".cmake", ".gradle", ".pom"],
-                  },
-                },
-              ],
-            })
-            const writable = await fileHandle.createWritable()
-            await writable.write(fileContents[currentFile])
-            await writable.close()
-          } catch (err) {
-            const blob = new Blob([fileContents[currentFile]], { type: "text/plain" })
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement("a")
-            a.href = url
-            a.download = currentFile.split("/").pop() || "file.txt"
-            document.body.appendChild(a)
-            a.click()
-            document.body.removeChild(a)
-            URL.revokeObjectURL(url)
-          }
-        })()
-      } else {
-        const blob = new Blob([fileContents[currentFile]], { type: "text/plain" })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement("a")
-        a.href = url
-        a.download = currentFile.split("/").pop() || "file.txt"
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
-      }
-    }
+    // Auto-save is now handled automatically by the AI assistant
+    // This function is kept for compatibility but does nothing
+    console.log("Auto-save is handled automatically - no manual save needed")
   }
 
   const handleUpload = () => {

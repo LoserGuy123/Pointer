@@ -17,47 +17,54 @@ export async function POST(req: Request) {
       )
     }
 
-    let systemInstruction = `You are an expert coding assistant for Pointer IDE. You work like Cursor - you automatically apply code changes directly to the user's files.
+    let systemInstruction = `You are a fast coding assistant for Pointer IDE. You make direct edits to files.
 
-🚨 CRITICAL: LISTEN TO THE USER AND APPLY CHANGES SILENTLY! 🚨
+🚨 CRITICAL: BE FAST AND DIRECT! 🚨
 
 When the user asks for changes:
-
-1. Understand exactly what they want
-2. Apply the changes to the complete code
-3. Provide the updated code in a code block (this gets applied automatically)
-4. Keep your response brief and focused on what you did
+1. Understand what they want
+2. Apply changes to the complete code
+3. Provide updated code in a code block (auto-applied)
+4. Keep response brief - just say what you did
 
 EXAMPLE:
-User: "Add a print statement that says 'COOL SCRIPT'"
-You: "Added the print statement to make your script cooler."
+User: "Add a print statement"
+You: "Added print statement."
 
 \`\`\`cpp
-// Complete updated code with the changes applied
+// Complete updated code
 \`\`\`
 
-🚨 ABSOLUTE RULES - NO EXCEPTIONS:
-- ALWAYS listen to what the user actually wants
+RULES:
 - ALWAYS provide complete, working code in code blocks
-- NEVER show code in your chat response - it's applied automatically
-- NEVER use diff format with + and - symbols
-- NEVER use --- a/ or +++ b/ headers
-- NEVER use @@ symbols
-- Keep responses brief and focused
-- Make sure your code blocks contain complete, valid, working code
-- The system will automatically apply your changes silently
-
-Focus on understanding the user's request and delivering exactly what they asked for.`
+- NEVER show code in chat response - it's auto-applied
+- NEVER use diff format (+/- symbols)
+- Keep responses brief and fast
+- Focus on speed and accuracy`
 
     if (context) {
-      systemInstruction += `\n\nCurrent Project Context:
+      systemInstruction += `\n\nPROJECT CONTEXT - ANALYZE ENTIRE PROJECT:
 - Current File: ${context.currentFile || "None"}
-- Available Files: ${context.allFiles?.join(", ") || "None"}
-- Project Structure: ${Object.keys(context.projectStructure || {}).length} files total`
+- Total Files: ${context.allFiles?.length || 0}
+- File Tree Structure: ${JSON.stringify(context.fileTree || [], null, 2)}
 
-      if (context.fileContent && context.fileContent.trim()) {
-        systemInstruction += `\n\nCurrent File Content (${context.currentFile}):\n\`\`\`\n${context.fileContent}\n\`\`\``
-      }
+AVAILABLE FILES:
+${context.allFiles?.map(file => `- ${file} (${context.projectStructure?.[file]?.type || 'unknown'}, ${context.projectStructure?.[file]?.lines || 0} lines)`).join('\n') || 'None'}
+
+IMPORTANT: Before making changes, analyze the ENTIRE project structure and all files to understand:
+1. What files exist and their relationships
+2. Which file(s) the user's request applies to
+3. The project's architecture and dependencies
+4. Whether changes should be made to multiple files
+
+Current File Content (${context.currentFile}):
+\`\`\`
+${context.fileContent || "No content"}
+\`\`\`
+
+ALL FILE CONTENTS (for full project understanding):
+${Object.entries(context.allFileContents || {}).map(([file, content]) => 
+  `\n=== ${file} ===\n${content}\n`).join('\n')}`
     }
 
     // Use direct fetch to Gemini API instead of AI SDK to avoid import issues

@@ -21,6 +21,7 @@ import {
   Check,
   X,
   Trash2,
+  Edit3,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import ReactMarkdown from "react-markdown"
@@ -54,16 +55,26 @@ interface AIAssistantProps {
   onFileContentChange: (file: string, content: string) => void
 }
 
+interface EditNotification {
+  id: string
+  message: string
+  timestamp: number
+}
+
 function TypingMessage({ content, onComplete }: { content: string; onComplete: () => void }) {
   const [displayedContent, setDisplayedContent] = useState("")
   const [currentIndex, setCurrentIndex] = useState(0)
 
   useEffect(() => {
     if (currentIndex < content.length) {
+      // Much faster typing - process multiple characters at once for long content
+      const chunkSize = content.length > 500 ? 10 : content.length > 100 ? 5 : 2
+      const endIndex = Math.min(currentIndex + chunkSize, content.length)
+      
       const timer = setTimeout(() => {
-        setDisplayedContent((prev) => prev + content[currentIndex])
-        setCurrentIndex((prev) => prev + 1)
-      }, 1) // Ultra-fast typing for better responsiveness
+        setDisplayedContent(content.substring(0, endIndex))
+        setCurrentIndex(endIndex)
+      }, 5) // Reduced delay for much faster typing
 
       return () => clearTimeout(timer)
     } else {
@@ -134,6 +145,7 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isUserScrolling, setIsUserScrolling] = useState(false)
+  const [editNotifications, setEditNotifications] = useState<EditNotification[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -259,13 +271,20 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
             currentFile,
             fileContent: fileContents[currentFile] || "",
             allFiles: Object.keys(fileContents),
+            allFileContents: fileContents, // Send all file contents for full context
             projectStructure: Object.keys(fileContents).reduce(
               (acc, file) => {
-                acc[file] = fileContents[file].split("\n").length
+                acc[file] = {
+                  lines: fileContents[file].split("\n").length,
+                  size: fileContents[file].length,
+                  type: file.split('.').pop() || 'unknown'
+                }
                 return acc
               },
-              {} as Record<string, number>,
+              {} as Record<string, { lines: number; size: number; type: string }>,
             ),
+            // Get file tree structure from localStorage for better context
+            fileTree: JSON.parse(localStorage.getItem('pointer-ide-file-tree') || '[]'),
           },
         }),
       })
@@ -396,51 +415,92 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
 
   // Auto-apply changes when AI provides code blocks
   const autoApplyChanges = (messageContent: string, codeBlocks: Array<{ language: string; code: string }>) => {
-    if (!currentFile || !codeBlocks.length) {
-      console.log('❌ No current file or code blocks')
+    if (!codeBlocks.length) {
+      console.log('❌ No code blocks to apply')
       return
     }
 
-    console.log('🔍 Looking for line replacement instructions in:', messageContent.substring(0, 200) + '...')
+    console.log('🔍 Looking for file targeting and line replacement instructions...')
     console.log('📝 Code blocks available:', codeBlocks.length)
 
-    // Look for line replacement instructions first
-    const lineMatch = messageContent.match(/Replace lines (\d+) to (\d+) with the following code:/i)
+    // Look for file-specific instructions first
+    const fileMatch = messageContent.match(/Update file:?\s*([^\n]+)/i)
+    const targetFile = fileMatch ? fileMatch[1].trim() : currentFile
+
+    // Look for line replacement instructions
+    const lineMatch = messageContent.match(/Replace lines (\d+) to (\d+) (?:in\s+([^\n]+)\s+)?with the following code:/i)
+    
     if (lineMatch) {
       const startLine = parseInt(lineMatch[1])
       const endLine = parseInt(lineMatch[2])
+      const fileForLines = lineMatch[3]?.trim() || targetFile
       const newCode = codeBlocks[0].code
 
-      console.log(`🤖 Found line replacement: lines ${startLine}-${endLine}`)
+      console.log(`🤖 Found line replacement: lines ${startLine}-${endLine} in ${fileForLines}`)
       console.log(`📄 New code:`, newCode.substring(0, 100) + '...')
 
-      // Auto-apply the change
-      setTimeout(() => {
-        applyLineReplacement(startLine, endLine, newCode)
+      // Apply to the specified file
+      if (fileForLines && fileContents[fileForLines]) {
+        const currentContent = fileContents[fileForLines] || ""
+        const lines = currentContent.split('\n')
         
-        // Auto-verify the change was applied correctly
-        setTimeout(() => {
-          verifyAndFixChanges(startLine, endLine, newCode, messageContent)
-        }, 500)
-      }, 1000)
-    } else {
-      // If no specific line instructions, try to apply the code block directly
-      console.log('❌ No line replacement pattern found, trying direct application')
-      const newCode = codeBlocks[0].code
-      
-      if (newCode && newCode.trim().length > 0) {
-        console.log('🤖 Applying code block directly to file')
-        console.log(`📄 Code to apply:`, newCode.substring(0, 100) + '...')
-        
-        setTimeout(() => {
-          // Replace the entire file content with the new code
-          onFileContentChange(currentFile, newCode)
-          console.log('✅ Code applied directly to file')
-          
-          // Auto-save the file
-          autoSaveFile(currentFile, newCode)
-        }, 1000)
+        if (startLine >= 1 && endLine <= lines.length && startLine <= endLine) {
+          const newLines = [
+            ...lines.slice(0, startLine - 1),
+            ...newCode.split('\n'),
+            ...lines.slice(endLine)
+          ]
+          const updatedContent = newLines.join('\n')
+          onFileContentChange(fileForLines, updatedContent)
+          autoSaveFile(fileForLines, updatedContent)
+          showEditNotification(`Applied changes to lines ${startLine}-${endLine} in ${fileForLines}`)
+        } else {
+          // Fallback to full file replacement
+          onFileContentChange(fileForLines, newCode)
+          autoSaveFile(fileForLines, newCode)
+          showEditNotification(`Updated ${fileForLines}`)
+        }
+      } else {
+        // File doesn't exist, create it
+        onFileContentChange(fileForLines, newCode)
+        autoSaveFile(fileForLines, newCode)
+        showEditNotification(`Created ${fileForLines}`)
       }
+    } else {
+      // No specific line instructions, apply code blocks to target files
+      console.log('❌ No line replacement pattern found, applying to target file(s)')
+      
+      codeBlocks.forEach((codeBlock, index) => {
+        const newCode = codeBlock.code
+        if (newCode && newCode.trim().length > 0) {
+          // Try to determine target file from language or context
+          let targetFileName = targetFile
+          
+          if (!targetFileName || targetFileName === currentFile) {
+            // Use language to suggest file extension
+            const extensions: Record<string, string> = {
+              'javascript': '.js',
+              'typescript': '.ts',
+              'jsx': '.jsx',
+              'tsx': '.tsx',
+              'python': '.py',
+              'css': '.css',
+              'html': '.html',
+              'json': '.json'
+            }
+            
+            const extension = extensions[codeBlock.language] || '.js'
+            targetFileName = `file${index + 1}${extension}`
+          }
+          
+          console.log(`🤖 Applying code block to ${targetFileName}`)
+          console.log(`📄 Code to apply:`, newCode.substring(0, 100) + '...')
+          
+          onFileContentChange(targetFileName, newCode)
+          autoSaveFile(targetFileName, newCode)
+          showEditNotification(`Updated ${targetFileName}`)
+        }
+      })
     }
   }
 
@@ -509,45 +569,36 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
 
   const autoSaveFile = async (fileName: string, content: string) => {
     try {
-      // Store file content in localStorage for persistence
+      // Store file content in localStorage for persistence (silent auto-save)
       const fileKey = `pointer-ide-file-${fileName}`
       localStorage.setItem(fileKey, content)
       console.log(`💾 Auto-saved ${fileName} to localStorage`)
       
-      // Try to save to actual file system
-      try {
-        if ("showSaveFilePicker" in window) {
-          const fileHandle = await (window as any).showSaveFilePicker({
-            suggestedName: fileName,
-            types: [
-              {
-                description: "Text files",
-                accept: {
-                  "text/plain": [".txt", ".js", ".jsx", ".ts", ".tsx", ".py", ".css", ".html", ".htm", ".xml", ".json", ".yaml", ".yml", ".md", ".sql", ".php", ".java", ".cpp", ".cxx", ".cc", ".c", ".h", ".hpp", ".cs", ".vb", ".fs", ".lua", ".rb", ".pl", ".sh", ".bash", ".zsh", ".fish", ".ps1", ".go", ".rs", ".swift", ".kt", ".scala", ".clj", ".hs", ".ml", ".r", ".m", ".mm", ".dart", ".elm", ".ex", ".exs", ".erl", ".hrl", ".nim", ".zig", ".v", ".jl", ".cr", ".pas", ".pp", ".ada", ".ads", ".adb", ".ini", ".cfg", ".conf", ".toml", ".env", ".dockerfile", ".makefile", ".cmake", ".gradle", ".pom"],
-                },
-              },
-            ],
-          })
-          const writable = await fileHandle.createWritable()
-          await writable.write(content)
-          await writable.close()
-          console.log(`💾 Auto-saved ${fileName} to file system`)
-        } else {
-          // Fallback: download the file
-          const blob = new Blob([content], { type: "text/plain" })
-          const url = URL.createObjectURL(blob)
-          const a = document.createElement("a")
-          a.href = url
-          a.download = fileName
-          document.body.appendChild(a)
-          a.click()
-          document.body.removeChild(a)
-          URL.revokeObjectURL(url)
-          console.log(`💾 Auto-saved ${fileName} (downloaded)`)
+      // Update the file tree in localStorage to reflect changes
+      const savedFileTree = localStorage.getItem('pointer-ide-file-tree')
+      if (savedFileTree) {
+        try {
+          const fileTree = JSON.parse(savedFileTree)
+          const updateTreeContent = (nodes: any[]): any[] => {
+            return nodes.map(node => {
+              if (node.path === fileName && node.type === "file") {
+                return { ...node, content }
+              }
+              if (node.children) {
+                return { ...node, children: updateTreeContent(node.children) }
+              }
+              return node
+            })
+          }
+          const updatedTree = updateTreeContent(fileTree)
+          localStorage.setItem('pointer-ide-file-tree', JSON.stringify(updatedTree))
+        } catch (error) {
+          console.log('Failed to update file tree:', error)
         }
-      } catch (error) {
-        console.log('File system save failed, using localStorage only:', error)
       }
+      
+      // No file system prompts - just silent localStorage save
+      console.log(`✅ ${fileName} auto-saved successfully`)
     } catch (error) {
       console.log('Auto-save failed:', error)
     }
@@ -560,8 +611,37 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
     console.log('🗑️ Cleared chat history')
   }
 
+  const showEditNotification = (message: string) => {
+    const notification: EditNotification = {
+      id: Date.now().toString(),
+      message,
+      timestamp: Date.now()
+    }
+    setEditNotifications(prev => [...prev, notification])
+    
+    // Auto-remove notification after 3 seconds
+    setTimeout(() => {
+      setEditNotifications(prev => prev.filter(n => n.id !== notification.id))
+    }, 3000)
+  }
+
   return (
     <div className="h-full flex flex-col bg-sidebar text-sidebar-foreground">
+      {/* Edit Notifications */}
+      {editNotifications.length > 0 && (
+        <div className="absolute top-4 right-4 z-50 space-y-2">
+          {editNotifications.map((notification) => (
+            <div
+              key={notification.id}
+              className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 text-sm text-green-500/80 flex items-center gap-2 animate-in slide-in-from-right duration-300"
+            >
+              <Edit3 className="h-4 w-4" />
+              <span>{notification.message}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* AI Assistant Header */}
       <div className="p-4 border-b border-sidebar-border">
         <div className="flex items-center justify-between">
@@ -686,7 +766,7 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
                 <div className="mt-1 p-1 bg-green-500/5 border border-green-500/10 rounded text-xs text-green-500/70">
                   <div className="flex items-center gap-1">
                     <Check className="h-2 w-2" />
-                    <span>Applied</span>
+                    <span>Changes applied to {currentFile}</span>
                     </div>
                 </div>
               )}
