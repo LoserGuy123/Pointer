@@ -150,7 +150,6 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
   const [isUserScrolling, setIsUserScrolling] = useState(false)
   const [editNotifications, setEditNotifications] = useState<EditNotification[]>([])
   const [aiStatus, setAiStatus] = useState<string>("")
-  const [useGroq, setUseGroq] = useState<boolean>(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -273,7 +272,7 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
         },
         body: JSON.stringify({
           messages: [...messages, userMessage],
-          provider: useGroq ? 'groq' : 'gemini',
+          provider: 'gemini',
           context: {
             currentFile,
             fileContent: fileContents[currentFile] || "",
@@ -665,7 +664,7 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
             <div>
               <h2 className="text-sm font-semibold">AI Assistant</h2>
               <p className="text-xs text-muted-foreground">
-                {aiStatus ? aiStatus : `Powered by ${useGroq ? 'Groq' : 'Gemini'}`}
+                {aiStatus ? aiStatus : "Powered by Gemini"}
               </p>
             </div>
           </div>
@@ -685,27 +684,7 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
         </div>
       </div>
 
-      {/* AI Provider Toggle */}
-      <div className="p-3 border-b border-sidebar-border">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Settings className="h-4 w-4 text-muted-foreground" />
-            <Label htmlFor="ai-provider" className="text-xs font-medium">
-              AI Provider
-            </Label>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Gemini</span>
-            <Switch
-              id="ai-provider"
-              checked={useGroq}
-              onCheckedChange={setUseGroq}
-              className="data-[state=checked]:bg-green-500"
-            />
-            <span className="text-xs text-muted-foreground">Groq</span>
-          </div>
-        </div>
-      </div>
+
       
 
 

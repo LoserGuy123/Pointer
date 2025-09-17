@@ -1,21 +1,18 @@
 export async function POST(req: Request) {
   try {
-    const { messages, context, provider = 'gemini', reasoning = false } = await req.json()
+    const { messages, context } = await req.json()
 
-    // Check API key based on provider
-    const apiKey = provider === 'groq' ? process.env.GROQ_API_KEY : process.env.GEMINI_API_KEY
+    // Check API key
+    const apiKey = process.env.GEMINI_API_KEY
     
     // Debug logging
-    console.log('Provider:', provider)
     console.log('API Key exists:', !!apiKey)
     console.log('API Key length:', apiKey ? apiKey.length : 0)
     
     if (!apiKey) {
-      const providerName = provider === 'groq' ? 'Groq' : 'Gemini'
-      const envVar = provider === 'groq' ? 'GROQ_API_KEY' : 'GEMINI_API_KEY'
       return new Response(
         JSON.stringify({
-          error: `${providerName} API key not found. Please add ${envVar} to your environment variables. Create a .env.local file with: ${envVar}=your_api_key_here`,
+          error: `Gemini API key not found. Please add GEMINI_API_KEY to your environment variables. Create a .env.local file with: GEMINI_API_KEY=your_api_key_here`,
         }),
         {
           status: 400,
@@ -79,117 +76,34 @@ ${Object.entries(context.allFileContents || {}).map(([file, content]) =>
     let response: Response
     let data: any
 
-    if (provider === 'groq') {
-      // Limit context size for Groq to avoid token limit errors
-      let contextToSend = context ? { 
-        currentFile: context.currentFile,
-        fileContent: context.fileContent,
-        // Only include a subset of files to reduce token count
-        allFiles: context.allFiles?.slice(0, 5),
-        fileTree: context.fileTree
-      } : null;
-      
-      // Simplified system instruction for Groq to reduce tokens
-      let groqSystemInstruction = `You are a fast coding assistant for Pointer IDE. Make direct edits to files.
-When the user asks for changes:
-1. Understand what they want
-2. Apply changes to the complete code
-3. Provide updated code in a code block (auto-applied)
-4. Keep response brief`;
-
-      if (contextToSend) {
-        groqSystemInstruction += `\n\nCurrent File: ${contextToSend.currentFile || "None"}
-Current File Content:
-\`\`\`
-${contextToSend.fileContent || "No content"}
-\`\`\``;
-      }
-      
-      // Use Groq API with reduced context
-      response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
+    // Use Gemini API
+    response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [
-            { role: 'system', content: groqSystemInstruction },
-            // Only include the last 5 messages to reduce token count
-            ...messages.slice(-5).map((msg: any) => ({
-              role: msg.role,
-              content: msg.content,
-            })),
-          ],
-          temperature: 0.1,
-          max_tokens: 4000,
-        }),
-      })
-      
-      data = await response.json()
-      
-      // Debug Groq response
-      console.log('Groq response status:', response.status)
-      console.log('Groq response data:', JSON.stringify(data, null, 2))
-      
-      if (!response.ok) {
-        // Return a more user-friendly error message
-        return new Response(
-          JSON.stringify({
-            error: `Failed to process chat request. Please check your API key and try again. Error: ${data.error?.message || response.statusText}`,
-          }),
-          {
-            status: response.status,
-            headers: { "Content-Type": "application/json" },
-          }
-        )
-      }
-      
-      // Transform Groq response to match Gemini format
-      const messageContent = data.choices?.[0]?.message?.content || "Sorry, I couldn't generate a response."
-      
-      const transformedData = {
-        candidates: [{
-          content: {
-            parts: [{
-              text: messageContent
-            }]
-          }
-        }]
-      }
-      data = transformedData
-    } else {
-      // Use Gemini API
-      response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
+          contents: messages.map((msg: any) => ({
+            role: msg.role === "assistant" ? "model" : "user",
+            parts: [{ text: msg.content }],
+          })),
+          systemInstruction: {
+            parts: [
+              {
+                text: systemInstruction,
+              },
+            ],
           },
-          body: JSON.stringify({
-            contents: messages.map((msg: any) => ({
-              role: msg.role === "assistant" ? "model" : "user",
-              parts: [{ text: msg.content }],
-            })),
-            systemInstruction: {
-              parts: [
-                {
-                  text: systemInstruction,
-                },
-              ],
-            },
-          }),
-        },
-      )
-      
-      data = await response.json()
-    }
+        }),
+      },
+    )
+    
+    data = await response.json()
 
     if (!response.ok) {
-      const providerName = provider === 'groq' ? 'Groq' : 'Gemini'
-      throw new Error(`${providerName} API error: ${response.statusText}`)
+      throw new Error(`Gemini API error: ${response.statusText}`)
     }
     let originalContent = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't generate a response."
     let content = originalContent
