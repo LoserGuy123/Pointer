@@ -49,28 +49,45 @@ You: "Added print statement."
 - Just say what you did, don't explain the code`
 
     if (context) {
-      systemInstruction += `\n\nPROJECT CONTEXT - ANALYZE ENTIRE PROJECT:
+      // Fast but comprehensive project analysis
+      systemInstruction += `\n\nPROJECT CONTEXT - FAST ANALYSIS:
 - Current File: ${context.currentFile || "None"}
 - Total Files: ${context.allFiles?.length || 0}
-- File Tree Structure: ${JSON.stringify(context.fileTree || [], null, 2)}
 
-AVAILABLE FILES:
-${context.allFiles?.map(file => `- ${file} (${context.projectStructure?.[file]?.type || 'unknown'}, ${context.projectStructure?.[file]?.lines || 0} lines)`).join('\n') || 'None'}
+FILE TREE STRUCTURE (OPTIMIZED):
+${JSON.stringify(context.fileTree || [], null, 0)}
 
-IMPORTANT: Before making changes, analyze the ENTIRE project structure and all files to understand:
-1. What files exist and their relationships
-2. Which file(s) the user's request applies to
-3. The project's architecture and dependencies
-4. Whether changes should be made to multiple files
-
-Current File Content (${context.currentFile}):
+Current File Content:
 \`\`\`
 ${context.fileContent || "No content"}
-\`\`\`
+\`\`\``
 
-ALL FILE CONTENTS (for full project understanding):
-${Object.entries(context.allFileContents || {}).map(([file, content]) => 
-  `\n=== ${file} ===\n${content}\n`).join('\n')}`
+      // Include all file contents but in an optimized format
+      if (context.allFileContents) {
+        const allFiles = Object.entries(context.allFileContents || {});
+        
+        // Skip the current file since we already included it
+        const otherFiles = allFiles.filter(([file]) => file !== context.currentFile);
+        
+        if (otherFiles.length > 0) {
+          // Add all files but with optimized format
+          systemInstruction += `\n\nALL OTHER FILES (OPTIMIZED):`;
+          
+          otherFiles.forEach(([file, content]) => {
+            // Get file extension
+            const ext = file.split('.').pop()?.toLowerCase() || '';
+            
+            // For non-code files or very large files, just include a summary
+            if (!['js', 'jsx', 'ts', 'tsx', 'css', 'html', 'json'].includes(ext) || 
+                content.length > 10000) {
+              systemInstruction += `\n=== ${file} === (${content.length} chars)`;
+            } else {
+              // For code files, include the full content
+              systemInstruction += `\n=== ${file} ===\n${content}`;
+            }
+          });
+        }
+      }
     }
 
     let response: Response
@@ -113,17 +130,14 @@ ${Object.entries(context.allFileContents || {}).map(([file, content]) =>
       content = "⚠️ WARNING: I accidentally provided diff format. Please ask me to provide the changes using the 'Replace lines X to Y' format instead. I should not use diff format with + and - symbols.\n\n" + content
     }
 
-    // Clean up user-facing content - remove technical line number references and code explanations
-    content = content.replace(/Replace lines \d+ to \d+ with the following code:/gi, '')
-    content = content.replace(/Replace lines \d+ to \d+ with:/gi, '')
-    content = content.replace(/Here's the updated code:/gi, '')
-    content = content.replace(/Here is the updated code:/gi, '')
-    content = content.replace(/Here's the code:/gi, '')
-    content = content.replace(/Here is the code:/gi, '')
-    content = content.replace(/Updated code:/gi, '')
-    content = content.replace(/The updated code:/gi, '')
-    content = content.replace(/Code updated:/gi, '')
-    content = content.replace(/```[\s\S]*?```/g, '') // Remove all code blocks from display
+    // Don't remove adjustment messages - keep them for user awareness
+    // Only remove code blocks and technical formatting
+    content = content.replace(/```[\s\S]*?```/g, '[Code block applied]') // Replace code blocks with confirmation
+    
+    // Add confirmation when adjustments are mentioned but keep the message
+    if (content.includes('adjusted') || content.includes('adjustment')) {
+      content = "✅ CHANGES APPLIED: " + content
+    }
     
     // Clean up any leftover empty lines or formatting issues
     content = content.replace(/\n\s*\n\s*\n/g, '\n\n').trim()
