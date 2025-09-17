@@ -109,7 +109,16 @@ ${Object.entries(context.allFileContents || {}).map(([file, content]) =>
       console.log('Groq response data:', JSON.stringify(data, null, 2))
       
       if (!response.ok) {
-        throw new Error(`Groq API error: ${response.status} - ${data.error?.message || response.statusText}`)
+        // Return a more user-friendly error message
+        return new Response(
+          JSON.stringify({
+            error: `Failed to process chat request. Please check your API key and try again. Error: ${data.error?.message || response.statusText}`,
+          }),
+          {
+            status: response.status,
+            headers: { "Content-Type": "application/json" },
+          }
+        )
       }
       
       // Transform Groq response to match Gemini format
