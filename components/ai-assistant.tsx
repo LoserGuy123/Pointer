@@ -22,6 +22,7 @@ import {
   X,
   Trash2,
   Edit3,
+  Settings,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import ReactMarkdown from "react-markdown"
@@ -31,6 +32,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
 
 interface Message {
   id: string
@@ -146,6 +149,8 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
   const [isLoading, setIsLoading] = useState(false)
   const [isUserScrolling, setIsUserScrolling] = useState(false)
   const [editNotifications, setEditNotifications] = useState<EditNotification[]>([])
+  const [aiStatus, setAiStatus] = useState<string>("")
+  const [useGroq, setUseGroq] = useState<boolean>(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -258,6 +263,7 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
     setMessages((prev) => [...prev, userMessage])
     setInput("")
     setIsLoading(true)
+    setAiStatus("Analyzing project...")
 
     try {
       const response = await fetch("/api/chat", {
@@ -267,6 +273,7 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
         },
         body: JSON.stringify({
           messages: [...messages, userMessage],
+          provider: useGroq ? 'groq' : 'gemini',
           context: {
             currentFile,
             fileContent: fileContents[currentFile] || "",
@@ -289,12 +296,14 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
         }),
       })
 
+      setAiStatus("Processing response...")
       const data = await response.json()
 
       if (!response.ok) {
         throw new Error(data.error || "Failed to get response")
       }
 
+      setAiStatus("Applying changes...")
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
@@ -311,6 +320,9 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
         // Use the original content before it gets cleaned up
         const originalContent = data.originalContent || data.content
         autoApplyChanges(originalContent, data.codeBlocks)
+        setAiStatus("Changes applied!")
+      } else {
+        setAiStatus("Response ready")
       }
     } catch (error) {
       console.error("Chat error:", error)
@@ -323,6 +335,7 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
       setMessages((prev) => [...prev, errorMessage])
     } finally {
       setIsLoading(false)
+      setAiStatus("")
     }
   }
 
@@ -651,7 +664,9 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
             </div>
             <div>
               <h2 className="text-sm font-semibold">AI Assistant</h2>
-              <p className="text-xs text-muted-foreground">Powered by Gemini</p>
+              <p className="text-xs text-muted-foreground">
+                {aiStatus ? aiStatus : `Powered by ${useGroq ? 'Groq' : 'Gemini'}`}
+              </p>
             </div>
           </div>
           <DropdownMenu>
@@ -667,6 +682,28 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+        </div>
+      </div>
+
+      {/* AI Provider Toggle */}
+      <div className="p-3 border-b border-sidebar-border">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Settings className="h-4 w-4 text-muted-foreground" />
+            <Label htmlFor="ai-provider" className="text-xs font-medium">
+              AI Provider
+            </Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Gemini</span>
+            <Switch
+              id="ai-provider"
+              checked={useGroq}
+              onCheckedChange={setUseGroq}
+              className="data-[state=checked]:bg-green-500"
+            />
+            <span className="text-xs text-muted-foreground">Groq</span>
+          </div>
         </div>
       </div>
 
@@ -818,7 +855,9 @@ export function AIAssistant({ fileContents, currentFile, onFileContentChange }: 
                     style={{ animationDelay: "0.2s" }}
                   ></div>
                 </div>
-                <span className="text-xs text-muted-foreground">AI is thinking...</span>
+                <span className="text-xs text-muted-foreground">
+                  {aiStatus || "AI is thinking..."}
+                </span>
               </div>
             </div>
           </div>

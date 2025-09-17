@@ -1,14 +1,15 @@
 export async function POST(req: Request) {
   try {
-    const { messages, context } = await req.json()
+    const { messages, context, provider = 'gemini' } = await req.json()
 
-    // Check if Gemini API key is available
-    const apiKey = process.env.GEMINI_API_KEY
+    // Check API key based on provider
+    const apiKey = provider === 'groq' ? process.env.GROQ_API_KEY : process.env.GEMINI_API_KEY
     if (!apiKey) {
+      const providerName = provider === 'groq' ? 'Groq' : 'Gemini'
+      const envVar = provider === 'groq' ? 'GROQ_API_KEY' : 'GEMINI_API_KEY'
       return new Response(
         JSON.stringify({
-          error:
-            "Gemini API key not found. Please add GEMINI_API_KEY to your environment variables in Project Settings.",
+          error: `${providerName} API key not found. Please add ${envVar} to your environment variables in Project Settings.`,
         }),
         {
           status: 400,
@@ -35,12 +36,14 @@ You: "Added print statement."
 // Complete updated code
 \`\`\`
 
-RULES:
+🚨 ABSOLUTE RULES - NO EXCEPTIONS:
 - ALWAYS provide complete, working code in code blocks
-- NEVER show code in chat response - it's auto-applied
+- NEVER show code in your chat response - it's auto-applied
 - NEVER use diff format (+/- symbols)
+- NEVER show the entire script in chat
 - Keep responses brief and fast
-- Focus on speed and accuracy`
+- Focus on speed and accuracy
+- Just say what you did, don't explain the code`
 
     if (context) {
       systemInstruction += `\n\nPROJECT CONTEXT - ANALYZE ENTIRE PROJECT:
@@ -67,35 +70,76 @@ ${Object.entries(context.allFileContents || {}).map(([file, content]) =>
   `\n=== ${file} ===\n${content}\n`).join('\n')}`
     }
 
-    // Use direct fetch to Gemini API instead of AI SDK to avoid import issues
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
+    let response: Response
+    let data: any
+
+    if (provider === 'groq') {
+      // Use Groq API
+      response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          contents: messages.map((msg: any) => ({
-            role: msg.role === "assistant" ? "model" : "user",
-            parts: [{ text: msg.content }],
-          })),
-          systemInstruction: {
-            parts: [
-              {
-                text: systemInstruction,
-              },
-            ],
-          },
+          model: 'llama-3.3-70b-versatile',
+          messages: [
+            { role: 'system', content: systemInstruction },
+            ...messages.map((msg: any) => ({
+              role: msg.role,
+              content: msg.content,
+            })),
+          ],
+          temperature: 0.1,
+          max_tokens: 4000,
         }),
-      },
-    )
-
-    if (!response.ok) {
-      throw new Error(`Gemini API error: ${response.statusText}`)
+      })
+      
+      data = await response.json()
+      
+      // Transform Groq response to match Gemini format
+      const transformedData = {
+        candidates: [{
+          content: {
+            parts: [{
+              text: data.choices?.[0]?.message?.content || "Sorry, I couldn't generate a response."
+            }]
+          }
+        }]
+      }
+      data = transformedData
+    } else {
+      // Use Gemini API
+      response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contents: messages.map((msg: any) => ({
+              role: msg.role === "assistant" ? "model" : "user",
+              parts: [{ text: msg.content }],
+            })),
+            systemInstruction: {
+              parts: [
+                {
+                  text: systemInstruction,
+                },
+              ],
+            },
+          }),
+        },
+      )
+      
+      data = await response.json()
     }
 
-    const data = await response.json()
+    if (!response.ok) {
+      const providerName = provider === 'groq' ? 'Groq' : 'Gemini'
+      throw new Error(`${providerName} API error: ${response.statusText}`)
+    }
     let originalContent = data.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't generate a response."
     let content = originalContent
 
@@ -104,13 +148,17 @@ ${Object.entries(context.allFileContents || {}).map(([file, content]) =>
       content = "⚠️ WARNING: I accidentally provided diff format. Please ask me to provide the changes using the 'Replace lines X to Y' format instead. I should not use diff format with + and - symbols.\n\n" + content
     }
 
-    // Clean up user-facing content - remove technical line number references
+    // Clean up user-facing content - remove technical line number references and code explanations
     content = content.replace(/Replace lines \d+ to \d+ with the following code:/gi, '')
     content = content.replace(/Replace lines \d+ to \d+ with:/gi, '')
     content = content.replace(/Here's the updated code:/gi, '')
     content = content.replace(/Here is the updated code:/gi, '')
     content = content.replace(/Here's the code:/gi, '')
     content = content.replace(/Here is the code:/gi, '')
+    content = content.replace(/Updated code:/gi, '')
+    content = content.replace(/The updated code:/gi, '')
+    content = content.replace(/Code updated:/gi, '')
+    content = content.replace(/```[\s\S]*?```/g, '') // Remove all code blocks from display
     
     // Clean up any leftover empty lines or formatting issues
     content = content.replace(/\n\s*\n\s*\n/g, '\n\n').trim()
